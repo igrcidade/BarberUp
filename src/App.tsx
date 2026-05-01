@@ -19,6 +19,7 @@ import Expenses from './pages/Expenses';
 import Retention from './pages/Retention';
 import MasterAdmin from './pages/MasterAdmin';
 import CheckoutPlan from './pages/CheckoutPlan';
+import CheckoutSuccess from './pages/CheckoutSuccess';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -37,6 +38,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/checkout" element={<ProtectedRoute><CheckoutPlan /></ProtectedRoute>} />
+            <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
             <Route
               path="/app/*"
               element={

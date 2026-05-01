@@ -24,23 +24,37 @@ export default function CheckoutPlan() {
 
   const selectedPlan = planDetails[planParam as keyof typeof planDetails] || planDetails.mensal;
 
-  const handleSimulatePayment = async () => {
+  const handlePayment = async () => {
     if (!user) return;
     setLoading(true);
-    // Simular delay do gateway
-    await new Promise(resolve => setTimeout(resolve, 2000));
 
     try {
-      await updateDoc(doc(db, 'users', user.uid), {
-        subscriptionStatus: 'active',
-        subscriptionPlan: planParam,
-        subscriptionEnd: new Date(Date.now() + (selectedPlan.days || 30) * 24 * 60 * 60 * 1000).toISOString()
+      const response = await fetch('/api/create-preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planId: planParam,
+          title: `Assinatura BarberUp - Plano ${selectedPlan.name}`,
+          price: selectedPlan.price.replace(',', '.'),
+          quantity: 1,
+          userId: user.uid
+        })
       });
-      navigate('/app/dashboard');
-      // No num ambiente real, você faria window.location.href = 'URL_DO_MERCADO_PAGO';
-      // Ou abriria o checkout transparente do Mercado Pago.
-    } catch (e) {
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao criar checkout');
+      }
+
+      if (data.init_point) {
+        window.location.href = data.init_point;
+      } else {
+        throw new Error('Link de pagamento não retornado');
+      }
+    } catch (e: any) {
       console.error(e);
+      alert('Erro ao processar pagamento: ' + e.message + '\n\nCertifique-se de configurar o Token do Mercado Pago em Produção!');
     } finally {
       setLoading(false);
     }
@@ -81,16 +95,14 @@ export default function CheckoutPlan() {
 
             <div className="pt-6 border-t border-border">
               <div className="bg-orange-500/10 border border-orange-500/20 p-4 rounded-xl mb-6">
-                <h4 className="text-orange-500 text-xs font-bold uppercase tracking-widest mb-1">Integração Real (Próximo Passo)</h4>
+                <h4 className="text-orange-500 text-xs font-bold uppercase tracking-widest mb-1">Processamento de Pagamento</h4>
                 <p className="text-zinc-400 text-xs leading-relaxed">
-                  Para receber os pagamentos reais na sua conta, você precisará gerar um "Link de Pagamento" no seu painel do Mercado Pago para cada plano. E para liberar o acesso automaticamente após o pagamento, é necessário configurar um "Webhook" (uma automação no servidor) que avisa o sistema que o pagamento de {selectedPlan.days} dias foi concluído.
-                  <br /><br />
-                  <span className="text-[#009EE3]">Por enquanto, este botão apenas simula o sucesso e já aplica os {selectedPlan.days} dias na conta de teste para exibir a experiência final.</span>
+                  Você será redirecionado para o ambiente seguro do <span className="text-[#009EE3] font-bold">Mercado Pago</span> para finalizar o pagamento com Pix, Cartão de Crédito ou Saldo.
                 </p>
               </div>
 
               <Button 
-                onClick={handleSimulatePayment} 
+                onClick={handlePayment} 
                 disabled={loading}
                 className="w-full h-14 bg-[#009EE3] hover:bg-[#007EB5] text-white font-bold uppercase tracking-widest text-sm rounded-xl"
               >
