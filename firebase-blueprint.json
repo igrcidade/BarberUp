@@ -1,0 +1,92 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "User Profile",
+      "description": "User business information and subscription status.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "businessName": { "type": "string" },
+        "activeSubscription": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "activeSubscription"]
+    },
+    "Service": {
+      "title": "Service",
+      "description": "A service offered by the barber.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" }
+      },
+      "required": ["userId", "name", "price"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "An item for sale.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "stock": { "type": "number" }
+      },
+      "required": ["userId", "name", "price"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "Barber's client information.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "notes": { "type": "string" },
+        "lastAttendance": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name"]
+    },
+    "Sale": {
+      "title": "Sale Record",
+      "description": "A log of a transaction (service or product).",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "items": { "type": "array" },
+        "total": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "total", "createdAt"]
+    },
+    "Expense": {
+      "title": "Expense Record",
+      "description": "A business expense record.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amount", "date"]
+    }
+  },
+  "firestore": {
+    "profiles": { "schema": "Profile", "description": "User business profiles" },
+    "services": { "schema": "Service", "description": "Services offered by barbers" },
+    "products": { "schema": "Product", "description": "Products sold by barbers" },
+    "clients": { "schema": "Client", "description": "Client management" },
+    "sales": { "schema": "Sale", "description": "Sales records" },
+    "expenses": { "schema": "Expense", "description": "Expense records" }
+  }
+}

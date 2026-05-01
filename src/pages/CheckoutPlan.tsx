@@ -1,0 +1,113 @@
+import React, { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { CheckCircle2, CreditCard, Lock, ShieldCheck } from 'lucide-react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from '@/lib/auth';
+
+export default function CheckoutPlan() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const searchParams = new URLSearchParams(location.search);
+  const planParam = searchParams.get('plan') || 'mensal';
+  
+  const [loading, setLoading] = useState(false);
+
+  const planDetails = {
+    mensal: { name: 'Mensal', price: '79,90', days: 30 },
+    semestral: { name: 'Semestral', price: '69,90', days: 180 },
+    anual: { name: 'Anual', price: '59,90', days: 365 }
+  };
+
+  const selectedPlan = planDetails[planParam as keyof typeof planDetails] || planDetails.mensal;
+
+  const handleSimulatePayment = async () => {
+    if (!user) return;
+    setLoading(true);
+    // Simular delay do gateway
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        subscriptionStatus: 'active',
+        subscriptionPlan: planParam,
+        subscriptionEnd: new Date(Date.now() + (selectedPlan.days || 30) * 24 * 60 * 60 * 1000).toISOString()
+      });
+      navigate('/app/dashboard');
+      // No num ambiente real, você faria window.location.href = 'URL_DO_MERCADO_PAGO';
+      // Ou abriria o checkout transparente do Mercado Pago.
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-xl space-y-6">
+        
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold uppercase tracking-tight">Finalizar Assinatura</h1>
+          <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest text-[#009EE3]">Integração Mercado Pago</p>
+        </div>
+
+        <Card className="bg-card border-border shadow-xl">
+          <CardContent className="p-8 space-y-6">
+            <div className="bg-muted p-4 rounded-xl flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-sm uppercase tracking-tight text-white">Plano {selectedPlan.name}</h3>
+                <p className="text-xs text-muted-foreground mt-1">Acesso completo ao BarberUp</p>
+              </div>
+              <div className="text-right">
+                <span className="text-2xl font-bold">R$ {selectedPlan.price}</span><span className="text-xs text-muted-foreground uppercase tracking-widest">/mês</span>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 text-sm text-zinc-300 font-medium">
+                <CheckCircle2 className="w-4 h-4 text-[#009EE3]" /> Pagamento 100% seguro pelo Mercado Pago
+              </div>
+              <div className="flex items-center gap-3 text-sm text-zinc-300 font-medium">
+                <CheckCircle2 className="w-4 h-4 text-[#009EE3]" /> Renovação automática e transparente
+              </div>
+              <div className="flex items-center gap-3 text-sm text-zinc-300 font-medium">
+                <CheckCircle2 className="w-4 h-4 text-[#009EE3]" /> Liberação imediata após aprovação
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-border">
+              <div className="bg-orange-500/10 border border-orange-500/20 p-4 rounded-xl mb-6">
+                <h4 className="text-orange-500 text-xs font-bold uppercase tracking-widest mb-1">Integração Real (Próximo Passo)</h4>
+                <p className="text-zinc-400 text-xs leading-relaxed">
+                  Para receber os pagamentos reais na sua conta, você precisará gerar um "Link de Pagamento" no seu painel do Mercado Pago para cada plano. E para liberar o acesso automaticamente após o pagamento, é necessário configurar um "Webhook" (uma automação no servidor) que avisa o sistema que o pagamento de {selectedPlan.days} dias foi concluído.
+                  <br /><br />
+                  <span className="text-[#009EE3]">Por enquanto, este botão apenas simula o sucesso e já aplica os {selectedPlan.days} dias na conta de teste para exibir a experiência final.</span>
+                </p>
+              </div>
+
+              <Button 
+                onClick={handleSimulatePayment} 
+                disabled={loading}
+                className="w-full h-14 bg-[#009EE3] hover:bg-[#007EB5] text-white font-bold uppercase tracking-widest text-sm rounded-xl"
+              >
+                {loading ? 'Processando...' : (
+                  <span className="flex items-center gap-2 text-white">
+                    <CreditCard className="w-5 h-5 text-white" /> Pagar com Mercado Pago
+                  </span>
+                )}
+              </Button>
+              <p className="text-center text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-4 flex items-center justify-center gap-1">
+                <Lock className="w-3 h-3" /> Transação Criptografada
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+      </div>
+    </div>
+  );
+}
