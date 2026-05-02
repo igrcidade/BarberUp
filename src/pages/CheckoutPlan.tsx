@@ -17,9 +17,9 @@ export default function CheckoutPlan() {
   const [loading, setLoading] = useState(false);
 
   const planDetails = {
-    mensal: { name: 'Mensal', price: '79,90', days: 30, isSubscription: true },
-    semestral: { name: 'Semestral', price: '419,40', days: 180, isSubscription: false },
-    anual: { name: 'Anual', price: '718,80', days: 365, isSubscription: false }
+    mensal: { name: 'Mensal', price: '79,90', period: 'mês', isSubscription: true },
+    semestral: { name: 'Semestral', price: '419,40', period: 'semestre', isSubscription: false },
+    anual: { name: 'Anual', price: '718,80', period: 'ano', isSubscription: false }
   };
 
   const selectedPlan = planDetails[planParam as keyof typeof planDetails] || planDetails.mensal;
@@ -88,7 +88,7 @@ export default function CheckoutPlan() {
                 <p className="text-xs text-muted-foreground mt-1">Acesso completo ao BarberUp</p>
               </div>
               <div className="text-right">
-                <span className="text-2xl font-bold">R$ {selectedPlan.price}</span><span className="text-xs text-muted-foreground uppercase tracking-widest">/mês</span>
+                <span className="text-2xl font-bold">R$ {selectedPlan.price}</span><span className="text-xs text-muted-foreground uppercase tracking-widest">/{selectedPlan.period}</span>
               </div>
             </div>
 

@@ -77,9 +77,15 @@ async function startServer() {
   app.post("/api/create-subscription", async (req, res) => {
     try {
       const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
-      const planId = process.env.MERCADOPAGO_PREAPPROVAL_PLAN_ID;
-      if (!token || !planId) {
-        throw new Error("MERCADOPAGO_ACCESS_TOKEN or PREAPPROVAL_PLAN_ID not defined");
+      // Fallback para o ID que o cliente passou
+      const planId = process.env.MERCADOPAGO_PREAPPROVAL_PLAN_ID || "89ff984a8b3f4107aa149f10bd0b15f9";
+      
+      if (!token) {
+        throw new Error("MERCADOPAGO_ACCESS_TOKEN not defined. Configure nas variáveis de ambiente da Hostinger.");
+      }
+
+      if (!planId) {
+        throw new Error("MERCADOPAGO_PREAPPROVAL_PLAN_ID not defined");
       }
 
       const { userId, email } = req.body;
