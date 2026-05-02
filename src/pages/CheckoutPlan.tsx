@@ -96,7 +96,7 @@ export default function CheckoutPlan() {
         errorMessage += `\n\nDetalhes: ${details}`;
       }
       
-      alert(errorMessage + '\n\nCertifique-se de configurar o Token do Mercado Pago em Produção!');
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }

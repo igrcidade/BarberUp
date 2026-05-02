@@ -114,20 +114,9 @@ async function startServer() {
       const { userId, email } = req.body;
       const appUrl = process.env.APP_URL || (req.headers.origin) || "https://tan-loris-476860.hostingersite.com";
 
-      // Detecta se estamos em Sandbox pelo token
-      const isSandboxMode = token.startsWith("TEST-") || token.includes("-8946389392025715-");
-
-      // SE ESTIVER EM MODO TESTE, TRAMITAMOS UM E-MAIL FORMATADO PARA TESTE
-      // A API de Assinaturas EXIGE o campo payer_email, mas REJEITA e-mails reais em Sandbox.
-      let apiPayerEmail = email;
-      if (isSandboxMode) {
-        console.log(`🧪 MODO TESTE: Usando e-mail de teste para destravar API.`);
-        apiPayerEmail = `test_user_${userId.substring(0, 8)}@testuser.com`;
-      }
-
-      // Monta o corpo da requisição
+      // Monta o corpo da requisição de forma limpa para PRODUÇÃO
       const body = {
-        payer_email: apiPayerEmail,
+        payer_email: email,
         back_url: `${appUrl}/checkout/success`,
         reason: "Assinatura Mensal BarberUp",
         external_reference: userId,
@@ -149,17 +138,10 @@ async function startServer() {
 
       console.log("🛠️ TESTE: Criando assinatura no Mercado Pago...", JSON.stringify(body, null, 2));
 
-      // Link direto como fallback caso a API de preapproval exija token de cartão (Checkout Transparente)
+      // Link direto de checkout (Link de Pagamento)
       let direct_link = null;
       if (planId) {
-        let directUrl = `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${planId}&external_reference=${encodeURIComponent(userId)}&back_url=${encodeURIComponent(`${appUrl}/checkout/success`)}`;
-        // No modo Sandbox, injetamos o e-mail de teste no link de fallback também para não dar erro
-        if (isSandboxMode) {
-          directUrl += `&payer_email=${encodeURIComponent(apiPayerEmail)}`;
-        } else {
-          directUrl += `&payer_email=${encodeURIComponent(email)}`;
-        }
-        direct_link = directUrl;
+        direct_link = `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${planId}&external_reference=${encodeURIComponent(userId)}&back_url=${encodeURIComponent(`${appUrl}/checkout/success`)}&payer_email=${encodeURIComponent(email)}`;
       }
 
       try {
@@ -206,26 +188,23 @@ async function startServer() {
             return res.json({ init_point: direct_link, fallback: true });
           }
 
-          // Tratamento para o erro de e-mail em sandbox ou link manual de fallback
-          if (data.message && (data.message.includes("Both payer and collector") || data.message.includes("payer_email is required") || data.error === "bad_request")) {
-             console.log("⚠️ Conflito de ambiente ou erro na API. Gerando link direto de checkout como solução...");
+          // Tratamento para erro na API - Gerando link direto de checkout seguro
+          if (data.message || data.error === "bad_request") {
              const manualLink = planId 
-               ? `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${planId}&external_reference=${encodeURIComponent(userId)}&back_url=${encodeURIComponent(`${appUrl}/checkout/success`)}`
-               : `https://www.mercadopago.com.br/subscriptions/checkout?reason=${encodeURIComponent("Assinatura BarberUp")}&external_reference=${encodeURIComponent(userId)}&back_url=${encodeURIComponent(`${appUrl}/checkout/success`)}&transaction_amount=79.90&frequency=1&frequency_type=months&currency_id=BRL`;
+               ? `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${planId}&external_reference=${encodeURIComponent(userId)}&back_url=${encodeURIComponent(`${appUrl}/checkout/success`)}&payer_email=${encodeURIComponent(email)}`
+               : `https://www.mercadopago.com.br/subscriptions/checkout?reason=${encodeURIComponent("Assinatura BarberUp")}&external_reference=${encodeURIComponent(userId)}&back_url=${encodeURIComponent(`${appUrl}/checkout/success`)}&transaction_amount=79.90&frequency=1&frequency_type=months&currency_id=BRL&payer_email=${encodeURIComponent(email)}`;
              
-             // Se cair aqui, vamos garantir que o init_point exista
              return res.json({ 
                init_point: manualLink, 
                fallback: true,
-               message: "Redirecionando para checkout seguro (Link Manual)" 
+               message: "Redirecionando para checkout seguro Mercado Pago" 
              });
           }
 
           return res.status(response.status).json({ 
-            error: "Erro na API de Assinaturas", 
-            message: data.message || "O Mercado Pago recusou a conexão. Verifique suas credenciais na Hostinger.",
-            details: data,
-            hint: "Certifique-se de que o Token na Hostinger é o mesmo que você me passou (APP_USR-8946...)"
+            error: "Erro Mercado Pago", 
+            message: data.message || "Não foi possível iniciar o pagamento.",
+            details: data
           });
         }
 
