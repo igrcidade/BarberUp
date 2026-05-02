@@ -82,38 +82,49 @@ async function startServer() {
   app.post("/api/create-subscription", async (req, res) => {
     try {
       const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
-      const planId = process.env.MERCADOPAGO_PREAPPROVAL_PLAN_ID;
+      let planId = process.env.MERCADOPAGO_PREAPPROVAL_PLAN_ID;
       
       if (!token) {
         throw new Error("MERCADOPAGO_ACCESS_TOKEN not defined. Configure o Token de Produção (ou Teste) na Hostinger.");
       }
 
-      // Se o ID do plano estiver faltando, tentamos informar como criar um ou criamos um temporário
-      if (!planId) {
-        console.warn("MERCADOPAGO_PREAPPROVAL_PLAN_ID não configurado.");
-        return res.status(400).json({ 
-          error: "PLAN_ID_MISSING", 
-          message: "Você ainda não configurou o ID do Plano de Assinatura.",
-          action: "Crie um plano no Mercado Pago ou use nossa ferramenta de setup."
-        });
+      // Se o ID do plano parece ser um token (erro comum) ou está vazio, tentamos criar sem plano associado
+      if (planId && (planId.startsWith("APP_USR-") || planId.startsWith("TEST-") || planId.trim() === "")) {
+        console.warn("⚠️ AVISO: MERCADOPAGO_PREAPPROVAL_PLAN_ID contém um Token em vez de um ID de Plano. Ignorando e usando Assinatura Direta.");
+        planId = null;
       }
 
       const { userId, email } = req.body;
       const appUrl = process.env.APP_URL || (req.headers.origin) || "https://tan-loris-476860.hostingersite.com";
 
+      // Monta o corpo da requisição de forma flexível
       const body = {
-        preapproval_plan_id: planId,
         payer_email: email,
         back_url: `${appUrl}/checkout/success`,
-        reason: "Assinatura BarberUp - Plano Mensal (Ambiente de Teste)",
+        reason: "Assinatura BarberUp - Plano Mensal (Teste)",
         external_reference: userId,
         status: "pending"
       };
 
-      console.log("🛠️ TESTE: Enviando requisição de ASSINATURA ao Mercado Pago:", JSON.stringify(body, null, 2));
+      // Se tivermos um ID de plano válido, usamos ele como template
+      if (planId) {
+        body.preapproval_plan_id = planId;
+      } else {
+        // Caso contrário, definimos as regras de recorrência MANUALMENTE na assinatura (Assinatura sem Plano)
+        body.auto_recurring = {
+          frequency: 1,
+          frequency_type: "months",
+          transaction_amount: 79.90,
+          currency_id: "BRL"
+        };
+      }
+
+      console.log("🛠️ TESTE: Criando assinatura no Mercado Pago...", JSON.stringify(body, null, 2));
 
       // Link direto como fallback caso a API de preapproval exija token de cartão (Checkout Transparente)
-      const direct_link = `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${planId}&payer_email=${encodeURIComponent(email)}&external_reference=${encodeURIComponent(userId)}&back_url=${encodeURIComponent(`${appUrl}/checkout/success`)}`;
+      const direct_link = planId 
+        ? `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${planId}&payer_email=${encodeURIComponent(email)}&external_reference=${encodeURIComponent(userId)}&back_url=${encodeURIComponent(`${appUrl}/checkout/success`)}`
+        : null;
 
       try {
         const response = await fetch("https://api.mercadopago.com/preapproval", {
@@ -130,23 +141,30 @@ async function startServer() {
         if (!response.ok) {
           console.error("Mercado Pago Subscription API Error Details:", JSON.stringify(data, null, 2));
           
-          // Se o erro for sobre card_token_id, significa que a API preapproval exige cartão para criação direta.
-          // Nesse caso, usamos o redirect direto para o checkout de assinaturas do MP.
-          if (data.message && (data.message.includes("card_token_id") || data.error === "bad_request")) {
-            console.log("Usando link direto de checkout de assinatura (Checkout Pro)...");
-            return res.json({ 
-              init_point: direct_link,
-              fallback: true
-            });
+          // Se o erro for sobre card_token_id, usamos o link direto se tivermos o planId
+          if (data.message && (data.message.includes("card_token_id") || data.error === "bad_request") && direct_link) {
+            console.log("Usando link direto de checkout de assinatura como fallback...");
+            return res.json({ init_point: direct_link, fallback: true });
           }
 
-          // Identificar especificamente o erro de ID de plano inexistente/incorreto
-          if (data.message && data.message.includes("template with id") && data.message.includes("does not exist")) {
-             return res.status(400).json({ 
-              error: "PLAN_ID_INVALID", 
-              message: "O ID do plano configurado na Hostinger não é um Plano válido. Você parece ter colocado o seu User ID no lugar do ID do Plano.",
-              details: data.message
-            });
+          // Se o erro for que o template (planId) não existe, tentamos criar UMA SEGUNDA VEZ sem o planId
+          if (planId && data.message && data.message.includes("template with id") && data.message.includes("does not exist")) {
+             console.log("Plan ID inválido no MP. Tentando nova criação sem template...");
+             delete body.preapproval_plan_id;
+             body.auto_recurring = {
+                frequency: 1,
+                frequency_type: "months",
+                transaction_amount: 79.90,
+                currency_id: "BRL"
+             };
+             
+             const retryResp = await fetch("https://api.mercadopago.com/preapproval", {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+             });
+             const retryData = await retryResp.json();
+             if (retryResp.ok) return res.json({ init_point: retryData.init_point, id: retryData.id });
           }
 
           return res.status(response.status).json({ 
