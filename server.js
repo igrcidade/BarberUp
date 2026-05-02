@@ -114,24 +114,25 @@ async function startServer() {
       const { userId, email } = req.body;
       const appUrl = process.env.APP_URL || (req.headers.origin) || "https://tan-loris-476860.hostingersite.com";
 
-      // SE ESTIVER EM MODO TESTE, VAMOS OMITIR O PAGADOR para evitar o erro de conflito "Real vs Teste"
-      let payerEmail = email;
-      if (isSandbox) {
-        console.log("🧪 MODO SANDBOX: Omitindo payer_email para evitar conflito. Você deve logar com a conta de teste na tela do MP.");
-        payerEmail = null;
+      // Detecta se estamos em Sandbox pelo token
+      const isSandboxMode = token.startsWith("TEST-") || token.includes("-8946389392025715-");
+
+      // SE ESTIVER EM MODO TESTE, TRAMITAMOS UM E-MAIL FORMATADO PARA TESTE
+      // A API de Assinaturas EXIGE o campo payer_email, mas REJEITA e-mails reais em Sandbox.
+      let apiPayerEmail = email;
+      if (isSandboxMode) {
+        console.log(`🧪 MODO TESTE: Usando e-mail de teste para destravar API.`);
+        apiPayerEmail = `test_user_${userId.substring(0, 8)}@testuser.com`;
       }
 
-      // Monta o corpo da requisição de forma limpa
+      // Monta o corpo da requisição
       const body = {
+        payer_email: apiPayerEmail,
         back_url: `${appUrl}/checkout/success`,
         reason: "Assinatura Mensal BarberUp",
         external_reference: userId,
         status: "pending"
       };
-
-      if (payerEmail) {
-        body.payer_email = payerEmail;
-      }
 
       // Se tivermos um ID de plano válido, usamos ele como template
       if (planId) {
@@ -152,8 +153,10 @@ async function startServer() {
       let direct_link = null;
       if (planId) {
         let directUrl = `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${planId}&external_reference=${encodeURIComponent(userId)}&back_url=${encodeURIComponent(`${appUrl}/checkout/success`)}`;
-        // No modo Sandbox, não injetamos o e-mail no link de fallback também
-        if (!isSandbox) {
+        // No modo Sandbox, injetamos o e-mail de teste no link de fallback também para não dar erro
+        if (isSandboxMode) {
+          directUrl += `&payer_email=${encodeURIComponent(apiPayerEmail)}`;
+        } else {
           directUrl += `&payer_email=${encodeURIComponent(email)}`;
         }
         direct_link = directUrl;
