@@ -31,21 +31,24 @@ async function startServer() {
       const body = {
         items: [
           {
-            id: planId,
+            id: planId || "plan-id",
             title: title,
             quantity: quantity || 1,
             unit_price: Number(price),
             currency_id: "BRL"
           }
         ],
+        payer: {
+          email: userId ? `${userId}@test.com` : "customer@test.com"
+        },
         metadata: {
           user_id: userId,
           plan_id: planId
         },
         back_urls: {
-          success: `${process.env.APP_URL || "http://localhost:3000"}/checkout/success`,
-          failure: `${process.env.APP_URL || "http://localhost:3000"}/checkout/failure`,
-          pending: `${process.env.APP_URL || "http://localhost:3000"}/checkout/pending`
+          success: `${process.env.APP_URL || "https://tan-loris-476860.hostingersite.com"}/checkout/success`,
+          failure: `${process.env.APP_URL || "https://tan-loris-476860.hostingersite.com"}/checkout/failure`,
+          pending: `${process.env.APP_URL || "https://tan-loris-476860.hostingersite.com"}/checkout/pending`
         },
         auto_return: "approved",
       };

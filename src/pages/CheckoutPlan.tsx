@@ -39,37 +39,33 @@ export default function CheckoutPlan() {
       };
 
       if (selectedPlan.isSubscription) {
-        try {
-          endpoint = '/api/create-subscription';
-          payload = {
-              userId: user.uid,
-              email: user.email
-          };
+        endpoint = '/api/create-subscription';
+        payload = {
+            userId: user.uid,
+            email: user.email
+        };
 
-          console.log('Tentando criar assinatura de teste...');
-          const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
+        console.log('Iniciando criação de Assinatura no Mercado Pago...');
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
 
-          const data = await response.json();
-          
-          if (response.ok && data.init_point) {
-            console.log('Assinatura criada com sucesso!');
-            window.location.href = data.init_point;
-            return;
-          }
-          
-          // Se não houver Plano configurado, caímos para o Checkout Pro (Preferência) para validar a integração
-          console.warn('Subscription Plan ID não encontrado. Usando Checkout Pro para validar teste no Mercado Pago.');
-        } catch (subErr) {
-          console.error('Falha na assinatura, tentando checkout avulso para teste:', subErr);
+        const data = await response.json();
+        
+        if (response.ok && data.init_point) {
+          console.log('Assinatura criada com sucesso!');
+          window.location.href = data.init_point;
+          return;
         }
+        
+        // Se falhar a assinatura, lançamos o erro para ser pego no catch abaixo
+        throw data;
       }
 
-      // Checkout Avulso (Fallback para teste de integração)
-      console.log('Iniciando Checkout Pro (Preferência) para validação...');
+      // Checkout para Semestral/Anual (Planos que usam preferência única)
+      console.log('Iniciando Checkout Pro (Preferência) para planos semestral/anual...');
       endpoint = '/api/create-preference';
       payload = {
         planId: planParam,
