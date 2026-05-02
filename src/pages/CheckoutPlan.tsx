@@ -87,7 +87,8 @@ export default function CheckoutPlan() {
       console.error('Payment Error:', e);
       
       if (e.error === 'MP_TEST_MODE_ERROR') {
-          alert(`⚠️ ERRO DE AMBIENTE (TESTE)\n\n${e.message}`);
+          // Mantemos apenas para Checkout Pro se necessário, mas para Assinaturas vamos deixar o erro real aparecer
+          alert(`⚠️ ERRO MERCADO PAGO\n\n${e.message}`);
           setLoading(false);
           return;
       }

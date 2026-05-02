@@ -155,27 +155,12 @@ async function startServer() {
 
         const data = await response.json();
         
-          if (!response.ok) {
-            console.error("❌ ERRO MERCADO PAGO (SUBS):", JSON.stringify(data, null, 2));
-            
-            // Erro de ambiente de teste
-            if (data.message && (data.message.includes("test") || data.error === "bad_request")) {
-               return res.status(400).json({ 
-                  error: "MP_TEST_MODE_ERROR",
-                  message: "ERRO DE AMBIENTE: Você está em modo de TESTE.\n\nSOLUÇÃO:\nUse a conta de 'Comprador de Teste' fornecida pelo Mercado Pago para realizar o pagamento.",
-                  details: data.message
-               });
-            }
-
-            // Se o erro for sobre card_token_id, usamos o link direto se tivermos o planId
-          if (data.message && (data.message.includes("card_token_id") || data.error === "bad_request") && direct_link) {
-            console.log("Usando link direto de checkout de assinatura como fallback...");
-            return res.json({ init_point: direct_link, fallback: true });
-          }
-
-          // Se o erro for que o template (planId) não existe, tentamos criar UMA SEGUNDA VEZ sem o planId
-          if (planId && data.message && data.message.includes("template with id") && data.message.includes("does not exist")) {
-             console.log("Plan ID inválido no MP. Tentando nova criação sem template...");
+        if (!response.ok) {
+          console.error("❌ ERRO MERCADO PAGO (SUBS):", JSON.stringify(data, null, 2));
+          
+          // Se o erro for que o template (planId) não existe ou é inválido, tentamos criar SEM o planId
+          if (planId && data.message && (data.message.includes("template with id") || data.message.includes("does not exist"))) {
+             console.log("Plan ID inválido ou inexistente. Tentando Assinatura Direta (Manual)...");
              delete body.preapproval_plan_id;
              body.auto_recurring = {
                 frequency: 1,
@@ -191,11 +176,21 @@ async function startServer() {
              });
              const retryData = await retryResp.json();
              if (retryResp.ok) return res.json({ init_point: retryData.init_point, id: retryData.id });
+             
+             // Se falhar no retry também, retornamos o erro do retry
+             return res.status(retryResp.status).json({ error: "Erro na Assinatura (Retry)", message: retryData.message, details: retryData });
+          }
+
+          // Se for erro de card_token, usamos link direto se tivermos um plano
+          if (data.message && (data.message.includes("card_token_id") || data.error === "bad_request") && direct_link) {
+            console.log("Usando link direto de checkout de assinatura como fallback...");
+            return res.json({ init_point: direct_link, fallback: true });
           }
 
           return res.status(response.status).json({ 
-            error: "Erro ao criar assinatura no Mercado Pago", 
-            details: data 
+            error: "Erro na API de Assinaturas", 
+            message: data.message || "Não foi possível iniciar a assinatura.",
+            details: data
           });
         }
 
