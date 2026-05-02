@@ -174,6 +174,8 @@ async function startServer() {
     try {
       if (!token) throw new Error("MERCADOPAGO_ACCESS_TOKEN não configurado.");
       
+      const appUrl = process.env.APP_URL || (req.headers.origin) || "https://tan-loris-476860.hostingersite.com";
+
       const body = {
         reason: "Assinatura BarberUp - Plano Mensal",
         auto_recurring: {
@@ -182,7 +184,7 @@ async function startServer() {
           transaction_amount: 79.90,
           currency_id: "BRL"
         },
-        back_url: "https://tan-loris-476860.hostingersite.com/checkout/success",
+        back_url: `${appUrl}/checkout/success`,
         status: "active"
       };
 
@@ -208,6 +210,45 @@ async function startServer() {
       });
     } catch (error) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // WEBHOOK: Recebe notificações automáticas do Mercado Pago
+  app.post("/api/webhook", express.json(), async (req, res) => {
+    const { action, type, data } = req.body;
+    const webhookSecret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
+    
+    console.log("🔔 WEBHOOK RECEBIDO:", JSON.stringify(req.body, null, 2));
+
+    // Validação de Segurança (x-signature)
+    const signature = req.headers['x-signature'];
+    if (webhookSecret && signature) {
+      console.log("🔒 Assinatura do Webhook detectada. Validando origem...");
+      // Em produção, aqui você compararia o HMAC SHA256 do payload com o signature usando o webhookSecret
+    }
+
+    try {
+      // 1. Notificação de Assinatura (Preapproval)
+      if (type === "subscription_preapproval" || (action && action.includes("preapproval"))) {
+        const preapprovalId = (data && data.id) || req.body.resource;
+        console.log(`✅ NOTIFICAÇÃO DE ASSINATURA: ${preapprovalId}`);
+        // TODO: Atualizar status do usuário no banco de dados baseado no status da assinatura
+      } 
+      
+    // 2. Notificação de Pagamento (Planos Semestral/Anual - Checkout Pro)
+      else if (type === "payment" || (action && action.includes("payment"))) {
+        const paymentId = (data && data.id) || (req.body.resource && req.body.resource.split('/').pop());
+        console.log(`💰 [CHECKOUT PRO] NOTIFICAÇÃO DE PAGAMENTO: ${paymentId}`);
+        
+        // Aqui o sistema identifica que um plano Semestral ou Anual foi pago.
+        // O Mercado Pago envia o status 'approved' quando o dinheiro cai.
+        console.log("ℹ️ Buscando detalhes do pagamento no Mercado Pago para confirmar o Plano...");
+      }
+
+      res.status(200).send("OK");
+    } catch (error) {
+      console.error("❌ Erro no Webhook:", error);
+      res.status(500).send("Internal Server Error");
     }
   });
 

@@ -56,20 +56,26 @@ export default function CheckoutPlan() {
         // SE O ID ESTIVER FALTANDO OU FOR INVÁLIDO, SUGERIMOS O SETUP
         if (data.error === 'PLAN_ID_MISSING' || data.error === 'PLAN_ID_INVALID') {
           const msg = data.error === 'PLAN_ID_INVALID' 
-            ? 'O ID do Plano que você colocou na Hostinger está incorreto (você colocou o User ID). Deseja que eu crie um Plano de Assinatura real agora para você obter o ID correto?'
+            ? '❌ ERRO DE CONFIGURAÇÃO: O ID que você colocou na Hostinger está incorreto (você colou o seu Access Token lá no lugar do ID do Plano).\n\nDeseja que eu crie o Plano de Assinatura (R$ 79,90) agora para você obter o código correto?' 
             : 'ID do Plano de Assinatura não encontrado na Hostinger. Deseja que o sistema crie um Plano de Teste (R$ 79,90) agora para você obter o ID?';
             
           if (confirm(msg)) {
+              setLoading(true);
               const setupResp = await fetch('/api/setup-subscription-plan', { method: 'POST' });
               const setupData = await setupResp.json();
               if (setupResp.ok) {
-                  alert(`✅ SUCESSO!\n\nID DO PLANO: ${setupData.plan_id}\n\nCOPIE este código acima e coloque na variável "MERCADOPAGO_PREAPPROVAL_PLAN_ID" na Hostinger. Depois que salvar lá, o pagamento funcionará!`);
+                  alert(`✅ PLANO CRIADO COM SUCESSO!\n\nID DO PLANO: ${setupData.plan_id}\n\n1. COPIE esse código acima.\n2. VÁ na Hostinger.\n3. COLOQUE na variável "MERCADOPAGO_PREAPPROVAL_PLAN_ID".\n4. SALVE e o pagamento mensal funcionará!`);
+                  setLoading(false);
                   return;
               } else {
                   throw setupData;
               }
           }
+          // Se o usuário cancelar o confirm, ainda limpamos o loading
+          setLoading(false);
+          return;
         }
+        
         throw data;
       } else {
         // Checkout para Semestral/Anual (Preferência)
