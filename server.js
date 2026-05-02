@@ -67,7 +67,7 @@ async function startServer() {
       }
 
       res.json({ id: data.id, init_point: data.init_point });
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
       res.status(500).json({ error: error.message || "Erro interno no servidor" });
     }
