@@ -29,14 +29,8 @@ export default function CheckoutPlan() {
     setLoading(true);
 
     try {
-      let endpoint = '/api/create-preference';
-      let payload: any = {
-        planId: planParam,
-        title: `Assinatura BarberUp - Plano ${selectedPlan.name}`,
-        price: selectedPlan.price.replace(',', '.'),
-        quantity: 1,
-        userId: user.uid
-      };
+      let endpoint = '';
+      let payload: any = {};
 
       if (selectedPlan.isSubscription) {
         endpoint = '/api/create-subscription';
@@ -60,16 +54,15 @@ export default function CheckoutPlan() {
           return;
         }
         
-        // Se falhar a assinatura, lançamos o erro para ser pego no catch abaixo
         throw data;
       }
 
       // Checkout para Semestral/Anual (Planos que usam preferência única)
-      console.log('Iniciando Checkout Pro (Preferência) para planos semestral/anual...');
+      console.log('Iniciando Checkout Pro (Preferência)...');
       endpoint = '/api/create-preference';
       payload = {
         planId: planParam,
-        title: `Teste BarberUp - ${selectedPlan.name}`,
+        title: `Plano BarberUp - ${selectedPlan.name}`,
         price: selectedPlan.price.replace(',', '.'),
         quantity: 1,
         userId: user.uid
