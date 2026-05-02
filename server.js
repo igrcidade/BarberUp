@@ -101,15 +101,14 @@ async function startServer() {
 
       const body = {
         preapproval_plan_id: planId,
-        payer: {
-          email: email
-        },
+        payer_email: email,
         back_url: `${appUrl}/checkout/success`,
-        reason: "Assinatura BarberUp - Mensal",
-        external_reference: userId
+        reason: "Assinatura BarberUp - Plano Mensal",
+        external_reference: userId,
+        status: "pending"
       };
 
-      console.log("Enviando requisição ao Mercado Pago:", JSON.stringify(body, null, 2));
+      console.log("Enviando requisição ao Mercado Pago (Assinatura):", JSON.stringify(body, null, 2));
 
       const response = await fetch("https://api.mercadopago.com/preapproval", {
         method: "POST",
@@ -140,7 +139,14 @@ async function startServer() {
         });
       }
 
-      res.json({ init_point: data.init_point });
+      // FORMATO SEGURO: Link direto de checkout de assinatura do Mercado Pago
+      const direct_link = `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${planId}`;
+
+      res.json({ 
+        init_point: data.init_point || direct_link,
+        id: data.id,
+        status: data.status
+      });
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: error.message || "Erro interno no servidor" });
