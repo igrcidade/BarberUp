@@ -110,43 +110,59 @@ async function startServer() {
 
       console.log("Enviando requisição ao Mercado Pago (Assinatura):", JSON.stringify(body, null, 2));
 
-      const response = await fetch("https://api.mercadopago.com/preapproval", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(body)
-      });
+      // Link direto como fallback caso a API de preapproval exija token de cartão (Checkout Transparente)
+      const direct_link = `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${planId}&payer_email=${encodeURIComponent(email)}&external_reference=${encodeURIComponent(userId)}&back_url=${encodeURIComponent(`${appUrl}/checkout/success`)}`;
 
-      const data = await response.json();
-      
-      if (!response.ok) {
-        console.error("Mercado Pago Subscription API Error Details:", JSON.stringify(data, null, 2));
+      try {
+        const response = await fetch("https://api.mercadopago.com/preapproval", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(body)
+        });
+
+        const data = await response.json();
         
-        // Identificar especificamente o erro de ID de plano inexistente/incorreto
-        if (data.message && data.message.includes("template with id") && data.message.includes("does not exist")) {
-           return res.status(400).json({ 
-            error: "PLAN_ID_INVALID", 
-            message: "O ID do plano configurado na Hostinger não é um Plano válido. Você parece ter colocado o seu User ID no lugar do ID do Plano.",
-            details: data.message
+        if (!response.ok) {
+          console.error("Mercado Pago Subscription API Error Details:", JSON.stringify(data, null, 2));
+          
+          // Se o erro for sobre card_token_id, significa que a API preapproval exige cartão para criação direta.
+          // Nesse caso, usamos o redirect direto para o checkout de assinaturas do MP.
+          if (data.message && (data.message.includes("card_token_id") || data.error === "bad_request")) {
+            console.log("Usando link direto de checkout de assinatura (Checkout Pro)...");
+            return res.json({ 
+              init_point: direct_link,
+              fallback: true
+            });
+          }
+
+          // Identificar especificamente o erro de ID de plano inexistente/incorreto
+          if (data.message && data.message.includes("template with id") && data.message.includes("does not exist")) {
+             return res.status(400).json({ 
+              error: "PLAN_ID_INVALID", 
+              message: "O ID do plano configurado na Hostinger não é um Plano válido. Você parece ter colocado o seu User ID no lugar do ID do Plano.",
+              details: data.message
+            });
+          }
+
+          return res.status(response.status).json({ 
+            error: "Erro ao criar assinatura no Mercado Pago", 
+            details: data 
           });
         }
 
-        return res.status(response.status).json({ 
-          error: "Erro ao criar assinatura no Mercado Pago", 
-          details: data 
+        res.json({ 
+          init_point: data.init_point || direct_link,
+          id: data.id,
+          status: data.status
         });
+      } catch (fetchError) {
+        console.error("Fetch Error Subscription:", fetchError);
+        // Fallback total para o link direto
+        res.json({ init_point: direct_link });
       }
-
-      // FORMATO SEGURO: Link direto de checkout de assinatura do Mercado Pago
-      const direct_link = `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${planId}`;
-
-      res.json({ 
-        init_point: data.init_point || direct_link,
-        id: data.id,
-        status: data.status
-      });
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: error.message || "Erro interno no servidor" });
