@@ -67,7 +67,17 @@ async function startServer() {
       const data = await response.json();
       
       if (!response.ok) {
-        console.error("Mercado Pago API Error:", data);
+        console.error("❌ ERRO MERCADO PAGO:", JSON.stringify(data, null, 2));
+        
+        // Erro comum de misturar conta real com token de teste
+        if (data.message && (data.message.includes("test") || data.error === "bad_request")) {
+           return res.status(400).json({ 
+              error: "MP_TEST_MODE_ERROR",
+              message: "ERRO DE AMBIENTE: Você está tentando pagar com uma conta REAL em um ambiente de TESTE (ou vice-versa).\n\nSOLUÇÃO:\n1. Use o e-mail do 'Comprador de Teste' que o Mercado Pago te deu.\n2. Se o MP pedir para validar o e-mail, você deve estar logado no navegador com essa conta de teste ficitícia.",
+              details: data.message
+           });
+        }
+        
         return res.status(response.status).json({ error: "Erro ao criar preferência de pagamento", details: data });
       }
 
@@ -138,10 +148,19 @@ async function startServer() {
 
         const data = await response.json();
         
-        if (!response.ok) {
-          console.error("Mercado Pago Subscription API Error Details:", JSON.stringify(data, null, 2));
-          
-          // Se o erro for sobre card_token_id, usamos o link direto se tivermos o planId
+          if (!response.ok) {
+            console.error("❌ ERRO MERCADO PAGO (SUBS):", JSON.stringify(data, null, 2));
+            
+            // Erro de ambiente de teste
+            if (data.message && (data.message.includes("test") || data.error === "bad_request")) {
+               return res.status(400).json({ 
+                  error: "MP_TEST_MODE_ERROR",
+                  message: "ERRO DE AMBIENTE: Você está em modo de TESTE.\n\nSOLUÇÃO:\nUse a conta de 'Comprador de Teste' fornecida pelo Mercado Pago para realizar o pagamento.",
+                  details: data.message
+               });
+            }
+
+            // Se o erro for sobre card_token_id, usamos o link direto se tivermos o planId
           if (data.message && (data.message.includes("card_token_id") || data.error === "bad_request") && direct_link) {
             console.log("Usando link direto de checkout de assinatura como fallback...");
             return res.json({ init_point: direct_link, fallback: true });
@@ -260,9 +279,24 @@ async function startServer() {
         const paymentId = (data && data.id) || (req.body.resource && req.body.resource.split('/').pop());
         console.log(`💰 [CHECKOUT PRO] NOTIFICAÇÃO DE PAGAMENTO: ${paymentId}`);
         
-        // Aqui o sistema identifica que um plano Semestral ou Anual foi pago.
-        // O Mercado Pago envia o status 'approved' quando o dinheiro cai.
-        console.log("ℹ️ Buscando detalhes do pagamento no Mercado Pago para confirmar o Plano...");
+        // Buscamos os detalhes do pagamento para validar o status
+        const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+          headers: { "Authorization": `Bearer ${webhookSecret || process.env.MERCADOPAGO_ACCESS_TOKEN}` }
+        });
+        
+        if (mpResponse.ok) {
+          const paymentData = await mpResponse.json();
+          console.log(`📊 STATUS DO PAGAMENTO ${paymentId}: ${paymentData.status}`);
+          
+          if (paymentData.status === 'approved') {
+            const userId = paymentData.external_reference;
+            const planType = paymentData.description; // Ex: "Plano Semestral"
+            console.log(`✅ PAGAMENTO APROVADO para Usuário: ${userId} (${planType})`);
+            // TODO: Aqui você atualizaria o Firebase/Banco de dados liberando o acesso
+          }
+        } else {
+          console.error(`❌ Erro ao buscar detalhes do pagamento ${paymentId}`);
+        }
       }
 
       res.status(200).send("OK");

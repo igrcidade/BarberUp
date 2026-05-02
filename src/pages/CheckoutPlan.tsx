@@ -85,6 +85,13 @@ export default function CheckoutPlan() {
       }
     } catch (e: any) {
       console.error('Payment Error:', e);
+      
+      if (e.error === 'MP_TEST_MODE_ERROR') {
+          alert(`⚠️ ERRO DE AMBIENTE (TESTE)\n\n${e.message}`);
+          setLoading(false);
+          return;
+      }
+
       let errorMessage = e.error || e.message || 'Erro ao processar pagamento';
       
       if (e.details) {
