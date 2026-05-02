@@ -20,6 +20,8 @@ import Retention from './pages/Retention';
 import MasterAdmin from './pages/MasterAdmin';
 import CheckoutPlan from './pages/CheckoutPlan';
 import CheckoutSuccess from './pages/CheckoutSuccess';
+import Subscription from './pages/Subscription';
+import Account from './pages/Account';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -52,6 +54,8 @@ export default function App() {
                       <Route path="/sales" element={<Sales />} />
                       <Route path="/expenses" element={<Expenses />} />
                       <Route path="/retention" element={<Retention />} />
+                      <Route path="/subscription" element={<Subscription />} />
+                      <Route path="/account" element={<Account />} />
                       <Route path="/master-admin" element={<MasterAdmin />} />
                       <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
                     </Routes>

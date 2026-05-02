@@ -12,7 +12,9 @@ import {
   Sun,
   Moon,
   AlertCircle,
-  ShieldCheck
+  ShieldCheck,
+  CreditCard,
+  User as UserIcon
 } from 'lucide-react';
 import { useTheme } from './ThemeProvider';
 import { auth } from '../lib/firebase';
@@ -45,7 +47,9 @@ const getMenuItems = (isAdmin: boolean) => {
     { title: 'Produtos', icon: Package, path: '/app/products' },
     { title: 'Clientes', icon: Users, path: '/app/clients' },
     { title: 'Despesas', icon: Receipt, path: '/app/expenses' },
-    { title: 'Retenção', icon: UserMinus, path: '/app/retention' }
+    { title: 'Retenção', icon: UserMinus, path: '/app/retention' },
+    { title: 'Minha Conta', icon: UserIcon, path: '/app/account' },
+    { title: 'Assinatura', icon: CreditCard, path: '/app/subscription' }
   ];
 
   if (isAdmin) {
@@ -56,7 +60,7 @@ const getMenuItems = (isAdmin: boolean) => {
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { user, isAdmin, isActive } = useAuth();
+  const { user, profile, isAdmin, isActive } = useAuth();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -85,7 +89,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </div>
               <div className="flex flex-col">
                 <span className="font-bold text-foreground text-xl tracking-tight leading-none">BarberUp</span>
-                <span className="text-[10px] font-bold text-primary uppercase tracking-widest mt-1 opacity-80">Premium Saas</span>
+                <span className="text-[10px] font-bold text-primary uppercase tracking-widest mt-1 opacity-80">Premium</span>
               </div>
             </div>
           </SidebarHeader>
@@ -194,9 +198,31 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       <p className="text-xs font-bold uppercase tracking-widest opacity-80 mt-1">Renove seu plano para voltar a registrar vendas e usar todos os recursos.</p>
                     </div>
                   </div>
-                  <Link to="/checkout">
+                  <Link to="/app/subscription">
                     <Button className="bg-red-500 hover:bg-red-600 text-white font-bold text-xs uppercase tracking-widest shrink-0">
                       Renovar Agora
+                    </Button>
+                  </Link>
+                </div>
+              )}
+              {isActive && profile?.subscriptionStatus === 'trial' && (
+                <div className="bg-orange-500/10 border border-orange-500/20 p-4 rounded-2xl mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 text-orange-500">
+                    <AlertCircle className="w-5 h-5 shrink-0" />
+                    <div>
+                      <h4 className="font-bold uppercase tracking-tight text-sm">Versão Trial</h4>
+                      <p className="text-xs font-bold uppercase tracking-widest opacity-80 mt-1">
+                        Seu período de teste grátis termina em {
+                          profile?.subscriptionEnd 
+                          ? Math.max(0, Math.ceil((new Date(profile.subscriptionEnd).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
+                          : 7
+                        } dias.
+                      </p>
+                    </div>
+                  </div>
+                  <Link to="/app/subscription">
+                    <Button className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs uppercase tracking-widest shrink-0">
+                      Escolher Plano
                     </Button>
                   </Link>
                 </div>

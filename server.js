@@ -73,6 +73,47 @@ async function startServer() {
     }
   });
 
+  // Mercado Pago Create Subscription API
+  app.post("/api/create-subscription", async (req, res) => {
+    try {
+      const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
+      const planId = process.env.MERCADOPAGO_PREAPPROVAL_PLAN_ID;
+      if (!token || !planId) {
+        throw new Error("MERCADOPAGO_ACCESS_TOKEN or PREAPPROVAL_PLAN_ID not defined");
+      }
+
+      const { userId, email } = req.body;
+
+      const body = {
+        preapproval_plan_id: planId,
+        payer_email: email,
+        back_url: `${process.env.APP_URL || "http://localhost:3000"}/checkout/success`,
+        status: "authorized"
+      };
+
+      const response = await fetch("https://api.mercadopago.com/preapproval", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        console.error("Mercado Pago Subscription API Error:", data);
+        return res.status(response.status).json({ error: "Erro ao criar assinatura", details: data });
+      }
+
+      res.json({ init_point: data.init_point });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: error.message || "Erro interno no servidor" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

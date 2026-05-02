@@ -17,9 +17,9 @@ export default function CheckoutPlan() {
   const [loading, setLoading] = useState(false);
 
   const planDetails = {
-    mensal: { name: 'Mensal', price: '79,90', days: 30 },
-    semestral: { name: 'Semestral', price: '69,90', days: 180 },
-    anual: { name: 'Anual', price: '59,90', days: 365 }
+    mensal: { name: 'Mensal', price: '79,90', days: 30, isSubscription: true },
+    semestral: { name: 'Semestral', price: '419,40', days: 180, isSubscription: false },
+    anual: { name: 'Anual', price: '718,80', days: 365, isSubscription: false }
   };
 
   const selectedPlan = planDetails[planParam as keyof typeof planDetails] || planDetails.mensal;
@@ -29,16 +29,27 @@ export default function CheckoutPlan() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/create-preference', {
+      let endpoint = '/api/create-preference';
+      let payload: any = {
+        planId: planParam,
+        title: `Assinatura BarberUp - Plano ${selectedPlan.name}`,
+        price: selectedPlan.price.replace(',', '.'),
+        quantity: 1,
+        userId: user.uid
+      };
+
+      if (selectedPlan.isSubscription) {
+        endpoint = '/api/create-subscription';
+        payload = {
+            userId: user.uid,
+            email: user.email
+        };
+      }
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          planId: planParam,
-          title: `Assinatura BarberUp - Plano ${selectedPlan.name}`,
-          price: selectedPlan.price.replace(',', '.'),
-          quantity: 1,
-          userId: user.uid
-        })
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json();
@@ -48,7 +59,7 @@ export default function CheckoutPlan() {
       }
 
       if (data.init_point) {
-        window.location.href = data.init_point;
+        window.open(data.init_point, '_blank');
       } else {
         throw new Error('Link de pagamento não retornado');
       }

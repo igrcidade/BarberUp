@@ -48,6 +48,9 @@ export default function Sales() {
   const [editingSale, setEditingSale] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+  const [isAddClientOpen, setIsAddClientOpen] = useState(false);
+  const [newClientName, setNewClientName] = useState('');
+  const [newClientPhone, setNewClientPhone] = useState('');
   const [editFormData, setEditFormData] = useState<any>({ 
     paymentMethod: 'Dinheiro',
     items: [],
@@ -68,6 +71,30 @@ export default function Sales() {
       unsubClients();
     };
   }, []);
+
+  const handleCreateClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newClientName.trim()) return;
+    
+    // Create the client in Firebase
+    const docRef = await addDocument('clients', {
+      name: newClientName,
+      phone: newClientPhone,
+      notes: 'Cadastrado no terminal de vendas'
+    });
+    
+    // Automatically select the new client
+    // Depending on addDocument implementation, if docRef.id exists:
+    if (docRef && docRef.id) {
+       setSelectedClientId(docRef.id);
+    }
+    setClientSearch(newClientName);
+    
+    // Close and reset
+    setIsAddClientOpen(false);
+    setNewClientName('');
+    setNewClientPhone('');
+  };
 
   const addToSale = (item: any, type: 'service' | 'product') => {
     setCurrentSale([...currentSale, { ...item, type, saleId: Math.random().toString(36).substr(2, 9) }]);
@@ -168,7 +195,17 @@ export default function Sales() {
 
         {/* IDENTIFICAR CLIENTE */}
         <div className="p-5 bg-card border border-border rounded-2xl shadow-sm space-y-3">
-          <Label className="text-[10px] font-bold uppercase tracking-widest text-primary">1. Identificar Cliente</Label>
+          <div className="flex items-center justify-between">
+            <Label className="text-[10px] font-bold uppercase tracking-widest text-primary">1. Identificar Cliente</Label>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-6 text-[10px] uppercase font-bold tracking-widest px-2"
+              onClick={() => setIsAddClientOpen(true)}
+            >
+              <Plus className="w-3 h-3 mr-1" /> Novo
+            </Button>
+          </div>
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground transition-colors group-focus-within:text-primary" />
             <Input 
@@ -456,6 +493,47 @@ export default function Sales() {
               Continuar Atendendo
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cadastrar Novo Cliente Modal */}
+      <Dialog open={isAddClientOpen} onOpenChange={setIsAddClientOpen}>
+        <DialogContent className="bg-card border-border rounded-3xl p-0 overflow-hidden shadow-2xl max-w-md">
+          <DialogHeader className="p-8 pb-4 bg-muted/30 border-b border-border">
+            <DialogTitle className="text-xl font-bold text-foreground uppercase tracking-tight">
+              Cadastrar Novo Cliente
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground text-xs font-medium">Cadastre rapidamente e continue a venda</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateClient} className="p-8 space-y-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Nome Completo *</Label>
+                <Input 
+                  value={newClientName} 
+                  onChange={(e) => setNewClientName(e.target.value)} 
+                  required 
+                  className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
+                  placeholder="Ex: Luan Souza"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Telefone / WhatsApp</Label>
+                <Input 
+                  placeholder="(00) 00000-0000"
+                  value={newClientPhone} 
+                  onChange={(e) => setNewClientPhone(e.target.value)} 
+                  className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
+                />
+              </div>
+            </div>
+            <DialogFooter className="pt-4 flex gap-3">
+              <Button type="button" variant="ghost" onClick={() => setIsAddClientOpen(false)} className="rounded-xl h-12 text-muted-foreground font-bold text-xs uppercase tracking-wider">Cancelar</Button>
+              <Button type="submit" className="barber-button-primary px-6 shadow-sm">
+                CADASTRAR
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

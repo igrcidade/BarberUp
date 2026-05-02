@@ -31,8 +31,14 @@ export default function Register() {
     setLoading(true);
     setError('');
     
+    if (!email.includes('@') || !email.includes('.')) {
+      setError('Por favor, insira um e-mail válido.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password.trim());
       const user = userCredential.user;
 
       await updateProfile(user, {
@@ -42,9 +48,9 @@ export default function Register() {
       await setDoc(doc(db, 'users', user.uid), {
         name,
         barbershopName: shopName,
-        email,
+        email: email.trim(),
         role: 'admin',
-        subscriptionPlan: selectedPlan || 'free',
+        subscriptionPlan: selectedPlan || 'trial',
         subscriptionStatus: selectedPlan ? 'pending' : 'trial',
         subscriptionEnd: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         createdAt: new Date().toISOString()
