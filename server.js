@@ -114,32 +114,21 @@ async function startServer() {
       const { userId, email } = req.body;
       const appUrl = process.env.APP_URL || (req.headers.origin) || "https://tan-loris-476860.hostingersite.com";
 
-      // SE ESTIVER EM MODO TESTE, O E-MAIL DO PAGADOR DEVE SER O DE TESTE
+      // SE ESTIVER EM MODO TESTE, O MERCADO PAGO EXIGE UM E-MAIL NO FORMATO DE TESTE (@testuser.com)
       let payerEmail = email;
-      if (isSandbox) {
-        console.log(`🧪 MODO TESTE: Validando se o e-mail ${email} é de teste...`);
-        // Se o e-mail não parecer um e-mail de teste do MP, avisamos no log
-        if (!email.includes("@testuser.com") && !email.includes("test_user")) {
-           console.warn("⚠️ ALERTA: Você está usando um e-mail real em ambiente de TESTE. Isso causará erro no Mercado Pago.");
-        }
+      if (isSandbox && (!email.includes("@testuser.com"))) {
+        console.log("🧪 MODO SANDBOX: Convertendo e-mail real para formato de teste para a API aceitar...");
+        payerEmail = `test_user_${userId.substring(0,8)}@testuser.com`;
       }
 
-      // Monta o corpo da requisição de forma flexível
+      // Monta o corpo da requisição
       const body = {
+        payer_email: payerEmail,
         back_url: `${appUrl}/checkout/success`,
-        reason: "Assinatura BarberUp - Plano Mensal",
+        reason: "Assinatura Mensal BarberUp",
         external_reference: userId,
         status: "pending"
       };
-
-      // NO MODO SANDBOX, NÃO ENVIAMOS O E-MAIL DO PAGADOR
-      // Isso força o Mercado Pago a pedir o e-mail na tela de pagamento, 
-      // evitando o erro "Both payer and collector must be real or test users"
-      if (!isSandbox) {
-        body.payer_email = email;
-      } else {
-        console.log("🧪 MODO SANDBOX: Omitindo payer_email para permitir login na tela do MP.");
-      }
 
       // Se tivermos um ID de plano válido, usamos ele como template
       if (planId) {

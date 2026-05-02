@@ -87,7 +87,7 @@ export default function CheckoutPlan() {
       console.error('Payment Error:', e);
       
       if (e.error === 'MP_SANDBOX_EMAIL_ERROR') {
-          alert(`❌ ERRO DE TESTE\n\n${e.message}`);
+          alert(`✅ CONTA DE TESTE NECESSÁRIA\n\nO Mercado Pago exige que você use uma CONTA DE COMPRADOR DE TESTE em modo Sandbox.\n\nSOLUÇÃO:\n1. Use uma Janela Anônima.\n2. Use as credenciais que você me enviou:\n   E-mail: test_user_7651603744094216517@testuser.com\n   Senha: ${'07D97A23#1f83#4e11#'}`);
           setLoading(false);
           return;
       }
