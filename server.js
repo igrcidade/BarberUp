@@ -53,6 +53,8 @@ async function startServer() {
         auto_return: "approved",
       };
 
+      console.log("🛠️ TESTE: Criando Preferência de Pagamento (Checkout Pro):", JSON.stringify(body, null, 2));
+
       const response = await fetch("https://api.mercadopago.com/checkout/preferences", {
         method: "POST",
         headers: {
@@ -103,12 +105,12 @@ async function startServer() {
         preapproval_plan_id: planId,
         payer_email: email,
         back_url: `${appUrl}/checkout/success`,
-        reason: "Assinatura BarberUp - Plano Mensal",
+        reason: "Assinatura BarberUp - Plano Mensal (Ambiente de Teste)",
         external_reference: userId,
         status: "pending"
       };
 
-      console.log("Enviando requisição ao Mercado Pago (Assinatura):", JSON.stringify(body, null, 2));
+      console.log("🛠️ TESTE: Enviando requisição de ASSINATURA ao Mercado Pago:", JSON.stringify(body, null, 2));
 
       // Link direto como fallback caso a API de preapproval exija token de cartão (Checkout Transparente)
       const direct_link = `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${planId}&payer_email=${encodeURIComponent(email)}&external_reference=${encodeURIComponent(userId)}&back_url=${encodeURIComponent(`${appUrl}/checkout/success`)}`;
