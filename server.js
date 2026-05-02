@@ -86,11 +86,13 @@ async function startServer() {
         throw new Error("MERCADOPAGO_ACCESS_TOKEN not defined. Configure o Token de Produção (ou Teste) na Hostinger.");
       }
 
+      // Se o ID do plano estiver faltando, tentamos informar como criar um ou criamos um temporário
       if (!planId) {
-        console.warn("MERCADOPAGO_PREAPPROVAL_PLAN_ID não configurado. O cliente deverá usar o fallback de Preferência.");
+        console.warn("MERCADOPAGO_PREAPPROVAL_PLAN_ID não configurado.");
         return res.status(400).json({ 
           error: "PLAN_ID_MISSING", 
-          details: "ID do plano não configurado no servidor." 
+          message: "Você ainda não configurou o ID do Plano de Assinatura.",
+          action: "Crie um plano no Mercado Pago ou use nossa ferramenta de setup."
         });
       }
 
@@ -122,6 +124,16 @@ async function startServer() {
       
       if (!response.ok) {
         console.error("Mercado Pago Subscription API Error Details:", JSON.stringify(data, null, 2));
+        
+        // Identificar especificamente o erro de ID de plano inexistente/incorreto
+        if (data.message && data.message.includes("template with id") && data.message.includes("does not exist")) {
+           return res.status(400).json({ 
+            error: "PLAN_ID_INVALID", 
+            message: "O ID do plano configurado na Hostinger não é um Plano válido. Você parece ter colocado o seu User ID no lugar do ID do Plano.",
+            details: data.message
+          });
+        }
+
         return res.status(response.status).json({ 
           error: "Erro ao criar assinatura no Mercado Pago", 
           details: data 
@@ -132,6 +144,48 @@ async function startServer() {
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: error.message || "Erro interno no servidor" });
+    }
+  });
+
+  // Auxiliar para criar o plano caso o usuário não tenha
+  app.post("/api/setup-subscription-plan", async (req, res) => {
+    try {
+      if (!token) throw new Error("MERCADOPAGO_ACCESS_TOKEN não configurado.");
+      
+      const body = {
+        reason: "Assinatura BarberUp - Plano Mensal",
+        auto_recurring: {
+          frequency: 1,
+          frequency_type: "months",
+          transaction_amount: 79.90,
+          currency_id: "BRL"
+        },
+        back_url: "https://tan-loris-476860.hostingersite.com/checkout/success",
+        status: "active"
+      };
+
+      const resp = await fetch("https://api.mercadopago.com/preapproval_plan", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+
+      const data = await resp.json();
+      
+      if (!resp.ok) {
+        return res.status(resp.status).json({ error: "Erro ao criar plano", details: data });
+      }
+
+      res.json({ 
+        message: "Plano criado com sucesso para testes!", 
+        plan_id: data.id,
+        instruction: "COPIE ESTE ID E COLOQUE NA VARIÁVEL MERCADOPAGO_PREAPPROVAL_PLAN_ID NA HOSTINGER"
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
   });
 

@@ -39,7 +39,7 @@ export default function CheckoutPlan() {
             email: user.email
         };
 
-        console.log('Iniciando criação de Assinatura no Mercado Pago...');
+        console.log('Tentando criar Assinatura...');
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -49,41 +49,56 @@ export default function CheckoutPlan() {
         const data = await response.json();
         
         if (response.ok && data.init_point) {
-          console.log('Assinatura criada com sucesso!');
           window.location.href = data.init_point;
           return;
         }
         
+        // SE O ID ESTIVER FALTANDO OU FOR INVÁLIDO, SUGERIMOS O SETUP
+        if (data.error === 'PLAN_ID_MISSING' || data.error === 'PLAN_ID_INVALID') {
+          const msg = data.error === 'PLAN_ID_INVALID' 
+            ? 'O ID do Plano que você colocou na Hostinger está incorreto (você colocou o User ID). Deseja que eu crie um Plano de Assinatura real agora para você obter o ID correto?'
+            : 'ID do Plano de Assinatura não encontrado na Hostinger. Deseja que o sistema crie um Plano de Teste (R$ 79,90) agora para você obter o ID?';
+            
+          if (confirm(msg)) {
+              const setupResp = await fetch('/api/setup-subscription-plan', { method: 'POST' });
+              const setupData = await setupResp.json();
+              if (setupResp.ok) {
+                  alert(`✅ SUCESSO!\n\nID DO PLANO: ${setupData.plan_id}\n\nCOPIE este código acima e coloque na variável "MERCADOPAGO_PREAPPROVAL_PLAN_ID" na Hostinger. Depois que salvar lá, o pagamento funcionará!`);
+                  return;
+              } else {
+                  throw setupData;
+              }
+          }
+        }
         throw data;
-      }
-
-      // Checkout para Semestral/Anual (Planos que usam preferência única)
-      console.log('Iniciando Checkout Pro (Preferência)...');
-      endpoint = '/api/create-preference';
-      payload = {
-        planId: planParam,
-        title: `Plano BarberUp - ${selectedPlan.name}`,
-        price: selectedPlan.price.replace(',', '.'),
-        quantity: 1,
-        userId: user.uid
-      };
-
-      const respPref = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const dataPref = await respPref.json();
-      
-      if (!respPref.ok) {
-        throw dataPref;
-      }
-
-      if (dataPref.init_point) {
-        window.location.href = dataPref.init_point;
       } else {
-        throw new Error('Link de pagamento não retornado');
+        // Checkout para Semestral/Anual (Preferência)
+        endpoint = '/api/create-preference';
+        payload = {
+          planId: planParam,
+          title: `Plano BarberUp - ${selectedPlan.name}`,
+          price: selectedPlan.price.replace(',', '.'),
+          quantity: 1,
+          userId: user.uid
+        };
+
+        const respPref = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const dataPref = await respPref.json();
+        
+        if (!respPref.ok) {
+          throw dataPref;
+        }
+
+        if (dataPref.init_point) {
+          window.location.href = dataPref.init_point;
+        } else {
+          throw new Error('Link de pagamento não retornado');
+        }
       }
     } catch (e: any) {
       console.error('Payment Error:', e);
