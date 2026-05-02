@@ -92,135 +92,74 @@ async function startServer() {
   app.post("/api/create-subscription", async (req, res) => {
     try {
       const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
-      let planId = process.env.MERCADOPAGO_PREAPPROVAL_PLAN_ID;
-      
       if (!token) {
-        throw new Error("MERCADOPAGO_ACCESS_TOKEN not defined. Configure o Token de Produção (ou Teste) na Hostinger.");
-      }
-
-      // Se o ID do plano parece ser um token (erro comum) ou está vazio, tentamos criar sem plano associado
-      if (planId && (planId.startsWith("APP_USR-") || planId.startsWith("TEST-") || planId.trim() === "")) {
-        const isTest = planId.startsWith("TEST-");
-        console.warn(`⚠️ AVISO: MERCADOPAGO_PREAPPROVAL_PLAN_ID contém um ${isTest ? 'Token de TESTE' : 'Token'} em vez de um ID de Plano.`);
-        console.log("💡 DICA: O sistema usará o modo 'Assinatura Direta' (Manual) para evitar erros de Plano inexistente.");
-        planId = null;
-      }
-      
-      const isSandbox = token.startsWith("TEST-");
-      if (isSandbox) {
-        console.log("🧪 AMBIENTE DE TESTE DETECTADO (SANDBOX)");
+        return res.status(500).json({ error: "Configuração ausente", message: "Token do Mercado Pago não configurado no servidor." });
       }
 
       const { userId, email } = req.body;
       const appUrl = process.env.APP_URL || (req.headers.origin) || "https://tan-loris-476860.hostingersite.com";
 
-      // Monta o corpo da requisição de forma limpa para PRODUÇÃO
+      // Tentamos buscar o Plan ID das variáveis de ambiente (opcional)
+      let planId = process.env.MERCADOPAGO_PREAPPROVAL_PLAN_ID;
+      if (planId && (planId.startsWith("APP_USR-") || planId.startsWith("TEST-") || planId.trim() === "")) {
+        planId = null; // Filtra se puserem o token no lugar do ID do plano
+      }
+
+      // Monta o corpo da requisição de Assinatura Direta via API
       const body = {
         payer_email: email,
         back_url: `${appUrl}/checkout/success`,
         reason: "Assinatura Mensal BarberUp",
         external_reference: userId,
-        status: "pending"
-      };
-
-      // Se tivermos um ID de plano válido, usamos ele como template
-      if (planId) {
-        body.preapproval_plan_id = planId;
-      } else {
-        // Caso contrário, definimos as regras de recorrência MANUALMENTE na assinatura (Assinatura sem Plano)
-        body.auto_recurring = {
+        auto_recurring: {
           frequency: 1,
           frequency_type: "months",
           transaction_amount: 79.90,
           currency_id: "BRL"
-        };
-      }
+        },
+        status: "pending"
+      };
 
-      console.log("🛠️ TESTE: Criando assinatura no Mercado Pago...", JSON.stringify(body, null, 2));
-
-      // Link direto de checkout (Link de Pagamento)
-      let direct_link = null;
+      // Se existir um Plan ID configurado, usamos como template
       if (planId) {
-        direct_link = `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${planId}&external_reference=${encodeURIComponent(userId)}&back_url=${encodeURIComponent(`${appUrl}/checkout/success`)}&payer_email=${encodeURIComponent(email)}`;
+        body.preapproval_plan_id = planId;
       }
 
-      try {
-        const response = await fetch("https://api.mercadopago.com/preapproval", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(body)
-        });
+      console.log("🚀 Criando assinatura oficial via API para:", email);
 
-        const data = await response.json();
-        
-        if (!response.ok) {
-          console.error("❌ ERRO MERCADO PAGO (SUBS):", JSON.stringify(data, null, 2));
-          
-          // Se o erro for que o template (planId) não existe ou é inválido, tentamos criar SEM o planId
-          if (planId && data.message && (data.message.includes("template with id") || data.message.includes("does not exist"))) {
-             console.log("Plan ID inválido ou inexistente. Tentando Assinatura Direta (Manual)...");
-             delete body.preapproval_plan_id;
-             body.auto_recurring = {
-                frequency: 1,
-                frequency_type: "months",
-                transaction_amount: 79.90,
-                currency_id: "BRL"
-             };
-             
-             const retryResp = await fetch("https://api.mercadopago.com/preapproval", {
-                method: "POST",
-                headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-                body: JSON.stringify(body)
-             });
-             const retryData = await retryResp.json();
-             if (retryResp.ok) return res.json({ init_point: retryData.init_point, id: retryData.id });
-             
-             // Se falhar no retry também, retornamos o erro do retry
-             return res.status(retryResp.status).json({ error: "Erro na Assinatura (Retry)", message: retryData.message, details: retryData });
-          }
+      const response = await fetch("https://api.mercadopago.com/preapproval", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
 
-          // Se for erro de card_token, usamos link direto se tivermos um plano
-          if (data.message && (data.message.includes("card_token_id") || data.error === "bad_request") && direct_link) {
-            console.log("Usando link direto de checkout de assinatura como fallback...");
-            return res.json({ init_point: direct_link, fallback: true });
-          }
+      const data = await response.json();
 
-          // Tratamento para erro na API - Gerando link direto de checkout seguro
-          if (data.message || data.error === "bad_request") {
-             const manualLink = planId 
-               ? `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${planId}&external_reference=${encodeURIComponent(userId)}&back_url=${encodeURIComponent(`${appUrl}/checkout/success`)}&payer_email=${encodeURIComponent(email)}`
-               : `https://www.mercadopago.com.br/subscriptions/checkout?reason=${encodeURIComponent("Assinatura BarberUp")}&external_reference=${encodeURIComponent(userId)}&back_url=${encodeURIComponent(`${appUrl}/checkout/success`)}&transaction_amount=79.90&frequency=1&frequency_type=months&currency_id=BRL&payer_email=${encodeURIComponent(email)}`;
-             
-             return res.json({ 
-               init_point: manualLink, 
-               fallback: true,
-               message: "Redirecionando para checkout seguro Mercado Pago" 
-             });
-          }
-
-          return res.status(response.status).json({ 
-            error: "Erro Mercado Pago", 
-            message: data.message || "Não foi possível iniciar o pagamento.",
-            details: data
-          });
-        }
-
-        res.json({ 
-          init_point: data.init_point || direct_link,
-          id: data.id,
-          status: data.status
-        });
-      } catch (fetchError) {
-        console.error("Fetch Error Subscription:", fetchError);
-        // Fallback total para o link direto
-        res.json({ init_point: direct_link });
+      if (response.ok && data.init_point) {
+        console.log("✅ Checkout gerado com sucesso via API.");
+        return res.json({ init_point: data.init_point });
       }
+
+      // Log detalhado do erro para diagnóstico no terminal
+      console.error("❌ O Mercado Pago recusou a criação da assinatura:", JSON.stringify(data, null, 2));
+      
+      let errorMessage = data.message || "O Mercado Pago recusou a transação.";
+      if (data.cause && data.cause[0]) {
+        errorMessage += ` (${data.cause[0].description})`;
+      }
+
+      return res.status(response.status).json({ 
+        error: "Erro na API de Assinaturas", 
+        message: errorMessage,
+        details: data
+      });
+
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: error.message || "Erro interno no servidor" });
+      console.error("💥 Erro crítico no /api/create-subscription:", error);
+      res.status(500).json({ error: "Erro Interno", message: "Falha ao processar assinatura no servidor." });
     }
   });
 
