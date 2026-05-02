@@ -30,9 +30,9 @@ export default function Subscription() {
   const displayName = status === 'trial' ? 'BarberUp Trial' : `BarberUp ${planNames[currentPlan]}`;
 
   const plans = [
-    { id: 'mensal', name: 'Mensal', price: '79,90', icon: Zap, color: 'text-primary' },
-    { id: 'semestral', name: 'Semestral', price: '69,90', icon: Shield, color: 'text-blue-500' },
-    { id: 'anual', name: 'Anual', price: '59,90', icon: Crown, color: 'text-[#009EE3]' },
+    { id: 'mensal', name: 'Mensal', price: '79,90', period: 'mês', icon: Zap, color: 'text-primary' },
+    { id: 'semestral', name: 'Semestral', price: '419,40', period: 'semestre', icon: Shield, color: 'text-blue-500' },
+    { id: 'anual', name: 'Anual', price: '718,80', period: 'ano', icon: Crown, color: 'text-[#009EE3]' },
   ];
 
   const handleCheckout = (planId: string) => {
@@ -124,7 +124,7 @@ export default function Subscription() {
                   <div className="mt-2 flex items-baseline justify-center gap-1">
                     <span className="text-xs font-bold text-muted-foreground">R$</span>
                     <span className="text-3xl font-black">{plan.price}</span>
-                    <span className="text-xs text-muted-foreground uppercase tracking-widest">/mês</span>
+                    <span className="text-xs text-muted-foreground uppercase tracking-widest">/{plan.period}</span>
                   </div>
                 </div>
                 <Button 

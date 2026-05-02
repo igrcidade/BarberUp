@@ -89,13 +89,16 @@ async function startServer() {
       }
 
       const { userId, email } = req.body;
+      const appUrl = process.env.APP_URL || (req.headers.origin) || "https://tan-loris-476860.hostingersite.com";
 
       const body = {
         preapproval_plan_id: planId,
         payer_email: email,
-        back_url: `${process.env.APP_URL || "http://localhost:3000"}/checkout/success`,
+        back_url: `${appUrl}/checkout/success`,
         status: "authorized"
       };
+
+      console.log("Enviando requisição ao Mercado Pago:", JSON.stringify(body, null, 2));
 
       const response = await fetch("https://api.mercadopago.com/preapproval", {
         method: "POST",
@@ -109,8 +112,11 @@ async function startServer() {
       const data = await response.json();
       
       if (!response.ok) {
-        console.error("Mercado Pago Subscription API Error:", data);
-        return res.status(response.status).json({ error: "Erro ao criar assinatura", details: data });
+        console.error("Mercado Pago Subscription API Error Details:", JSON.stringify(data, null, 2));
+        return res.status(response.status).json({ 
+          error: "Erro ao criar assinatura no Mercado Pago", 
+          details: data 
+        });
       }
 
       res.json({ init_point: data.init_point });

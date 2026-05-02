@@ -55,17 +55,27 @@ export default function CheckoutPlan() {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao criar checkout');
+        throw data;
       }
 
       if (data.init_point) {
-        window.open(data.init_point, '_blank');
+        window.location.href = data.init_point;
       } else {
         throw new Error('Link de pagamento não retornado');
       }
     } catch (e: any) {
-      console.error(e);
-      alert('Erro ao processar pagamento: ' + e.message + '\n\nCertifique-se de configurar o Token do Mercado Pago em Produção!');
+      console.error('Payment Error:', e);
+      let errorMessage = e.error || e.message || 'Erro ao processar pagamento';
+      
+      if (e.details) {
+        // Se detalhes for um objeto (erro do MP), extrai a mensagem ou causa
+        const details = typeof e.details === 'object' 
+          ? (e.details.message || (e.details.cause && e.details.cause[0]?.description) || JSON.stringify(e.details))
+          : e.details;
+        errorMessage += `\n\nDetalhes: ${details}`;
+      }
+      
+      alert(errorMessage + '\n\nCertifique-se de configurar o Token do Mercado Pago em Produção!');
     } finally {
       setLoading(false);
     }
