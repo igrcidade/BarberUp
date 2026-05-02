@@ -84,7 +84,11 @@ async function startServer() {
       }
 
       if (!planId) {
-        throw new Error("MERCADOPAGO_PREAPPROVAL_PLAN_ID não configurado. Crie um plano no Mercado Pago e adicione o ID na Hostinger.");
+        console.warn("MERCADOPAGO_PREAPPROVAL_PLAN_ID não configurado. O cliente deverá usar o fallback de Preferência.");
+        return res.status(400).json({ 
+          error: "PLAN_ID_MISSING", 
+          details: "ID do plano não configurado no servidor." 
+        });
       }
 
       const { userId, email } = req.body;
