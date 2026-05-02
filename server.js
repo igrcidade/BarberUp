@@ -114,16 +114,14 @@ async function startServer() {
       const { userId, email } = req.body;
       const appUrl = process.env.APP_URL || (req.headers.origin) || "https://tan-loris-476860.hostingersite.com";
 
-      // SE ESTIVER EM MODO TESTE, OMITIMOS O E-MAIL DO PAGADOR
-      // Isso é a SOLUÇÃO DEFINITIVA para evitar o erro "Both payer and collector must be real or test users"
-      // Ao omitir o e-mail, o Mercado Pago abrirá a tela pedindo login, onde você usará sua conta de teste.
+      // SE ESTIVER EM MODO TESTE, VAMOS OMITIR O PAGADOR para evitar o erro de conflito "Real vs Teste"
       let payerEmail = email;
       if (isSandbox) {
-        console.log("🧪 MODO SANDBOX: Omitindo e-mail para evitar erro de conflito Real vs Teste.");
+        console.log("🧪 MODO SANDBOX: Omitindo payer_email para evitar conflito. Você deve logar com a conta de teste na tela do MP.");
         payerEmail = null;
       }
 
-      // Monta o corpo da requisição
+      // Monta o corpo da requisição de forma limpa
       const body = {
         back_url: `${appUrl}/checkout/success`,
         reason: "Assinatura Mensal BarberUp",
@@ -205,13 +203,14 @@ async function startServer() {
             return res.json({ init_point: direct_link, fallback: true });
           }
 
-          // Tratamento amigável para o erro de e-mail em sandbox
-          if (data.message && data.message.includes("Both payer and collector")) {
-            return res.status(400).json({
-              error: "MP_SANDBOX_EMAIL_ERROR",
-              message: "Erro de Ambiente: O Mercado Pago não aceita e-mails reais em ambiente de teste.\n\nSOLUÇÃO:\nNo formulário de cadastro do app, use um e-mail fictício ou deixe o campo de e-mail em branco se possível.",
-              details: "Ambas as partes (vendedor e comprador) devem ser usuários de teste no modo Sandbox."
-            });
+          // Tratamento para o erro de e-mail em sandbox ou link manual de fallback
+          if (data.message && (data.message.includes("Both payer and collector") || data.error === "bad_request")) {
+             console.log("⚠️ Conflito de ambiente ou erro na API. Gerando link direto de checkout como solução...");
+             const manualLink = planId 
+               ? `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${planId}&external_reference=${encodeURIComponent(userId)}&back_url=${encodeURIComponent(`${appUrl}/checkout/success`)}`
+               : `https://www.mercadopago.com.br/subscriptions/checkout?reason=${encodeURIComponent("Assinatura BarberUp")}&external_reference=${encodeURIComponent(userId)}&back_url=${encodeURIComponent(`${appUrl}/checkout/success`)}&transaction_amount=79.90&frequency=1&frequency_type=months&currency_id=BRL`;
+             
+             return res.json({ init_point: manualLink, fallback: true });
           }
 
           return res.status(response.status).json({ 
