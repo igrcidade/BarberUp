@@ -100,8 +100,15 @@ async function startServer() {
 
       // Se o ID do plano parece ser um token (erro comum) ou está vazio, tentamos criar sem plano associado
       if (planId && (planId.startsWith("APP_USR-") || planId.startsWith("TEST-") || planId.trim() === "")) {
-        console.warn("⚠️ AVISO: MERCADOPAGO_PREAPPROVAL_PLAN_ID contém um Token em vez de um ID de Plano. Ignorando e usando Assinatura Direta.");
+        const isTest = planId.startsWith("TEST-");
+        console.warn(`⚠️ AVISO: MERCADOPAGO_PREAPPROVAL_PLAN_ID contém um ${isTest ? 'Token de TESTE' : 'Token'} em vez de um ID de Plano.`);
+        console.log("💡 DICA: O sistema usará o modo 'Assinatura Direta' (Manual) para evitar erros de Plano inexistente.");
         planId = null;
+      }
+      
+      const isSandbox = token.startsWith("TEST-");
+      if (isSandbox) {
+        console.log("🧪 AMBIENTE DE TESTE DETECTADO (SANDBOX)");
       }
 
       const { userId, email } = req.body;
