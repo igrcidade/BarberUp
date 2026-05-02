@@ -77,15 +77,14 @@ async function startServer() {
   app.post("/api/create-subscription", async (req, res) => {
     try {
       const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
-      // Fallback para o ID que o cliente passou
-      const planId = process.env.MERCADOPAGO_PREAPPROVAL_PLAN_ID || "89ff984a8b3f4107aa149f10bd0b15f9";
+      const planId = process.env.MERCADOPAGO_PREAPPROVAL_PLAN_ID;
       
       if (!token) {
-        throw new Error("MERCADOPAGO_ACCESS_TOKEN not defined. Configure nas variáveis de ambiente da Hostinger.");
+        throw new Error("MERCADOPAGO_ACCESS_TOKEN not defined. Configure o Token de Produção (ou Teste) na Hostinger.");
       }
 
       if (!planId) {
-        throw new Error("MERCADOPAGO_PREAPPROVAL_PLAN_ID not defined");
+        throw new Error("MERCADOPAGO_PREAPPROVAL_PLAN_ID não configurado. Crie um plano no Mercado Pago e adicione o ID na Hostinger.");
       }
 
       const { userId, email } = req.body;
@@ -93,8 +92,12 @@ async function startServer() {
 
       const body = {
         preapproval_plan_id: planId,
-        payer_email: email,
-        back_url: `${appUrl}/checkout/success`
+        payer: {
+          email: email
+        },
+        back_url: `${appUrl}/checkout/success`,
+        reason: "Assinatura BarberUp - Mensal",
+        external_reference: userId
       };
 
       console.log("Enviando requisição ao Mercado Pago:", JSON.stringify(body, null, 2));
