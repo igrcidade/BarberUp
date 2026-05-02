@@ -94,8 +94,7 @@ async function startServer() {
       const body = {
         preapproval_plan_id: planId,
         payer_email: email,
-        back_url: `${appUrl}/checkout/success`,
-        status: "authorized"
+        back_url: `${appUrl}/checkout/success`
       };
 
       console.log("Enviando requisição ao Mercado Pago:", JSON.stringify(body, null, 2));
