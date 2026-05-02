@@ -91,23 +91,29 @@ async function startServer() {
   // Mercado Pago Create Subscription API
   app.post("/api/create-subscription", async (req, res) => {
     try {
-      const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
-      if (!token) {
-        return res.status(500).json({ error: "Configuração ausente", message: "Token do Mercado Pago não configurado no servidor." });
+      const rawToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+      if (!rawToken) {
+        console.error("❌ ERRO: MERCADOPAGO_ACCESS_TOKEN não encontrado nas variáveis de ambiente.");
+        return res.status(500).json({ error: "Configuração ausente", message: "O Token do Mercado Pago não foi configurado na Hostinger." });
       }
+
+      // Limpa espaços em branco que podem vir do copiar/colar (causa erro de invalid token)
+      const token = rawToken.trim();
+      console.log(`📡 Iniciando Assinatura - Token detectado (primeiros caracteres): ${token.substring(0, 15)}...`);
 
       const { userId, email } = req.body;
       const appUrl = process.env.APP_URL || (req.headers.origin) || "https://tan-loris-476860.hostingersite.com";
 
-      // Tentamos buscar o Plan ID das variáveis de ambiente (opcional)
+      // Verifica se há um Plan ID configurado
       let planId = process.env.MERCADOPAGO_PREAPPROVAL_PLAN_ID;
-      if (planId && (planId.startsWith("APP_USR-") || planId.startsWith("TEST-") || planId.trim() === "")) {
-        planId = null; // Filtra se puserem o token no lugar do ID do plano
+      if (planId && (planId.startsWith("APP_USR") || planId.startsWith("TEST-"))) {
+        console.warn("⚠️ AVISO: MERCADOPAGO_PREAPPROVAL_PLAN_ID parece conter um Token em vez de um ID de Plano. Ignorando...");
+        planId = null;
       }
 
-      // Monta o corpo da requisição de Assinatura Direta via API
+      // Corpo da Assinatura (Formato Oficial Mercado Pago v1/preapproval)
       const body = {
-        payer_email: email,
+        payer_email: email.trim().toLowerCase(),
         back_url: `${appUrl}/checkout/success`,
         reason: "Assinatura Mensal BarberUp",
         external_reference: userId,
@@ -120,12 +126,10 @@ async function startServer() {
         status: "pending"
       };
 
-      // Se existir um Plan ID configurado, usamos como template
-      if (planId) {
-        body.preapproval_plan_id = planId;
+      // Se existir plano, ele vira o template
+      if (planId && planId.trim() !== "") {
+        body.preapproval_plan_id = planId.trim();
       }
-
-      console.log("🚀 Criando assinatura oficial via API para:", email);
 
       const response = await fetch("https://api.mercadopago.com/preapproval", {
         method: "POST",
@@ -139,27 +143,27 @@ async function startServer() {
       const data = await response.json();
 
       if (response.ok && data.init_point) {
-        console.log("✅ Checkout gerado com sucesso via API.");
+        console.log("✅ Checkout de Assinatura gerado com sucesso.");
         return res.json({ init_point: data.init_point });
       }
 
-      // Log detalhado do erro para diagnóstico no terminal
-      console.error("❌ O Mercado Pago recusou a criação da assinatura:", JSON.stringify(data, null, 2));
+      // Tratamento de Erros da API
+      console.error("❌ O Mercado Pago rejeitou os dados:", JSON.stringify(data, null, 2));
       
-      let errorMessage = data.message || "O Mercado Pago recusou a transação.";
-      if (data.cause && data.cause[0]) {
-        errorMessage += ` (${data.cause[0].description})`;
+      let message = data.message || "Erro desconhecido na API do Mercado Pago.";
+      if (data.status === 401 || message.includes("access_token")) {
+        message = "O Token inserido na Hostinger é INVÁLIDO ou expirou. Por favor, gere um novo Access Token em 'Suas Integrações' no Mercado Pago.";
       }
 
       return res.status(response.status).json({ 
         error: "Erro na API de Assinaturas", 
-        message: errorMessage,
-        details: data
+        message: message,
+        raw_error: data
       });
 
     } catch (error) {
-      console.error("💥 Erro crítico no /api/create-subscription:", error);
-      res.status(500).json({ error: "Erro Interno", message: "Falha ao processar assinatura no servidor." });
+      console.error("💥 Falha Crítica:", error);
+      res.status(500).json({ error: "Erro Interno", message: "Erro ao processar pagamento no servidor." });
     }
   });
 
