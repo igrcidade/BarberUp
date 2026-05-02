@@ -86,6 +86,12 @@ export default function CheckoutPlan() {
     } catch (e: any) {
       console.error('Payment Error:', e);
       
+      if (e.error === 'MP_SANDBOX_EMAIL_ERROR') {
+          alert(`❌ ERRO DE TESTE\n\n${e.message}`);
+          setLoading(false);
+          return;
+      }
+      
       if (e.error === 'MP_TEST_MODE_ERROR') {
           // Mantemos apenas para Checkout Pro se necessário, mas para Assinaturas vamos deixar o erro real aparecer
           alert(`⚠️ ERRO MERCADO PAGO\n\n${e.message}`);

@@ -114,14 +114,32 @@ async function startServer() {
       const { userId, email } = req.body;
       const appUrl = process.env.APP_URL || (req.headers.origin) || "https://tan-loris-476860.hostingersite.com";
 
+      // SE ESTIVER EM MODO TESTE, O E-MAIL DO PAGADOR DEVE SER O DE TESTE
+      let payerEmail = email;
+      if (isSandbox) {
+        console.log(`🧪 MODO TESTE: Validando se o e-mail ${email} é de teste...`);
+        // Se o e-mail não parecer um e-mail de teste do MP, avisamos no log
+        if (!email.includes("@testuser.com") && !email.includes("test_user")) {
+           console.warn("⚠️ ALERTA: Você está usando um e-mail real em ambiente de TESTE. Isso causará erro no Mercado Pago.");
+        }
+      }
+
       // Monta o corpo da requisição de forma flexível
       const body = {
-        payer_email: email,
         back_url: `${appUrl}/checkout/success`,
-        reason: "Assinatura BarberUp - Plano Mensal (Teste)",
+        reason: "Assinatura BarberUp - Plano Mensal",
         external_reference: userId,
         status: "pending"
       };
+
+      // NO MODO SANDBOX, NÃO ENVIAMOS O E-MAIL DO PAGADOR
+      // Isso força o Mercado Pago a pedir o e-mail na tela de pagamento, 
+      // evitando o erro "Both payer and collector must be real or test users"
+      if (!isSandbox) {
+        body.payer_email = email;
+      } else {
+        console.log("🧪 MODO SANDBOX: Omitindo payer_email para permitir login na tela do MP.");
+      }
 
       // Se tivermos um ID de plano válido, usamos ele como template
       if (planId) {
@@ -139,9 +157,14 @@ async function startServer() {
       console.log("🛠️ TESTE: Criando assinatura no Mercado Pago...", JSON.stringify(body, null, 2));
 
       // Link direto como fallback caso a API de preapproval exija token de cartão (Checkout Transparente)
-      const direct_link = planId 
-        ? `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${planId}&payer_email=${encodeURIComponent(email)}&external_reference=${encodeURIComponent(userId)}&back_url=${encodeURIComponent(`${appUrl}/checkout/success`)}`
-        : null;
+      let direct_link = null;
+      if (planId) {
+        let directUrl = `https://www.mercadopago.com.br/subscriptions/checkout?preapproval_plan_id=${planId}&external_reference=${encodeURIComponent(userId)}&back_url=${encodeURIComponent(`${appUrl}/checkout/success`)}`;
+        if (!isSandbox) {
+          directUrl += `&payer_email=${encodeURIComponent(email)}`;
+        }
+        direct_link = directUrl;
+      }
 
       try {
         const response = await fetch("https://api.mercadopago.com/preapproval", {
@@ -185,6 +208,15 @@ async function startServer() {
           if (data.message && (data.message.includes("card_token_id") || data.error === "bad_request") && direct_link) {
             console.log("Usando link direto de checkout de assinatura como fallback...");
             return res.json({ init_point: direct_link, fallback: true });
+          }
+
+          // Tratamento amigável para o erro de e-mail em sandbox
+          if (data.message && data.message.includes("Both payer and collector")) {
+            return res.status(400).json({
+              error: "MP_SANDBOX_EMAIL_ERROR",
+              message: "Erro de Ambiente: O Mercado Pago não aceita e-mails reais em ambiente de teste.\n\nSOLUÇÃO:\nNo formulário de cadastro do app, use um e-mail fictício ou deixe o campo de e-mail em branco se possível.",
+              details: "Ambas as partes (vendedor e comprador) devem ser usuários de teste no modo Sandbox."
+            });
           }
 
           return res.status(response.status).json({ 
