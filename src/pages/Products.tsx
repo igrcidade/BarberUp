@@ -70,9 +70,16 @@ export default function Products() {
     setIsOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Deseja excluir este produto?')) {
-      await deleteDocument('products', id);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    try {
+      await deleteDocument('products', deleteConfirm);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDeleteConfirm(null);
     }
   };
 
@@ -274,7 +281,7 @@ export default function Products() {
                             variant="ghost" 
                             size="icon" 
                             className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg"
-                            onClick={() => handleDelete(product.id)}
+                            onClick={() => setDeleteConfirm(product.id)}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -318,7 +325,7 @@ export default function Products() {
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted/10 rounded-xl" onClick={() => handleEdit(product)}>
                           <Pencil className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-xl" onClick={() => handleDelete(product.id)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-xl" onClick={() => setDeleteConfirm(product.id)}>
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -342,6 +349,21 @@ export default function Products() {
             })}
           </AnimatePresence>
         </div>
+        <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+          <DialogContent className="max-w-md bg-card border-border rounded-3xl p-8">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold uppercase tracking-tight text-foreground">Excluir Produto?</DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                Tem certeza que deseja excluir este produto? O histórico de vendas será mantido.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-3 mt-6">
+              <Button variant="ghost" onClick={() => setDeleteConfirm(null)} className="h-12 rounded-xl text-xs font-bold uppercase tracking-widest">Cancelar</Button>
+              <Button variant="destructive" onClick={confirmDelete} className="h-12 rounded-xl text-xs font-bold uppercase tracking-widest px-8">Excluir</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <Button 
           className="md:hidden fixed bottom-[88px] right-4 h-14 w-14 rounded-full shadow-xl z-50 flex items-center justify-center p-0"
           onClick={() => {

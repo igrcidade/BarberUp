@@ -44,6 +44,10 @@ export default function Expenses() {
   
   const [viewDate, setViewDate] = useState(new Date());
 
+  const [editContext, setEditContext] = useState<{ mode: string, orig: any } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<any>(null);
+  const [editPrompt, setEditPrompt] = useState<any>(null);
+
   const [formData, setFormData] = useState({ 
     description: '', 
     amount: '', 
@@ -65,6 +69,7 @@ export default function Expenses() {
       isRecurrent: false 
     });
     setEditingId(null);
+    setEditContext(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -75,7 +80,21 @@ export default function Expenses() {
       date: formData.date
     };
 
-    if (editingId) {
+    if (editContext) {
+      const currentMonthStr = format(viewDate, 'yyyy-MM');
+      const prevMonthStr = format(subMonths(viewDate, 1), 'yyyy-MM');
+      const orig = editContext.orig;
+
+      if (editContext.mode === 'this_month') {
+        await updateDocument('expenses', orig.id, { hiddenMonths: [...(orig.hiddenMonths || []), currentMonthStr] });
+        await addDocument('expenses', { ...data, isRecurrent: false });
+      } else if (editContext.mode === 'future') {
+        await updateDocument('expenses', orig.id, { recurrenceEndMonth: prevMonthStr });
+        await addDocument('expenses', { ...data, isRecurrent: true });
+      } else {
+        await updateDocument('expenses', orig.id, data);
+      }
+    } else if (editingId) {
       await updateDocument('expenses', editingId, data);
     } else {
       await addDocument('expenses', data);
@@ -86,20 +105,52 @@ export default function Expenses() {
   };
 
   const handleEdit = (expense: any) => {
+    if (expense.isRecurrent) {
+      setEditPrompt(expense);
+    } else {
+      openEditForm(expense, 'normal');
+    }
+  };
+
+  const openEditForm = (expense: any, mode: 'normal' | 'this_month' | 'future') => {
     setEditingId(expense.id);
+    setEditContext({ mode, orig: expense });
+    
+    let defaultDate = expense.date;
+    if (mode === 'this_month' || mode === 'future') {
+      const expenseDay = parseISO(expense.date).getDate();
+      defaultDate = format(new Date(viewDate.getFullYear(), viewDate.getMonth(), expenseDay), 'yyyy-MM-dd');
+    }
+
     setFormData({
       description: expense.description,
       amount: expense.amount.toString(),
       category: expense.category,
-      date: expense.date,
-      isRecurrent: expense.isRecurrent || false
+      date: defaultDate,
+      isRecurrent: mode === 'future' ? true : (mode === 'normal' ? expense.isRecurrent : false)
     });
     setIsOpen(true);
+    setEditPrompt(null);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Deseja excluir esta despesa?')) {
-      await deleteDocument('expenses', id);
+  const confirmDelete = async (type: 'all' | 'this_month' | 'future' = 'all') => {
+    if (!deleteConfirm) return;
+    const currentMonthStr = format(viewDate, 'yyyy-MM');
+    const prevMonthStr = format(subMonths(viewDate, 1), 'yyyy-MM');
+
+    try {
+      if (type === 'all') {
+        await deleteDocument('expenses', deleteConfirm.id);
+      } else if (type === 'this_month') {
+        const hidden = deleteConfirm.hiddenMonths || [];
+        await updateDocument('expenses', deleteConfirm.id, { hiddenMonths: [...hidden, currentMonthStr] });
+      } else if (type === 'future') {
+        await updateDocument('expenses', deleteConfirm.id, { recurrenceEndMonth: prevMonthStr });
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDeleteConfirm(null);
     }
   };
 
@@ -110,10 +161,15 @@ export default function Expenses() {
     if (!e.date) return false;
     const expenseDate = parseISO(e.date);
     
-    // If it's recurrent, it shows up in every month starting from its creation month
     if (e.isRecurrent) {
       const startOfMonthOfExpense = startOfMonth(expenseDate);
-      return startOfMonthOfExpense <= monthStart;
+      const currentMonthStr = format(viewDate, 'yyyy-MM');
+      
+      if (startOfMonthOfExpense > monthStart) return false;
+      if (e.hiddenMonths && e.hiddenMonths.includes(currentMonthStr)) return false;
+      if (e.recurrenceEndMonth && currentMonthStr > e.recurrenceEndMonth) return false;
+      
+      return true;
     }
     
     return isWithinInterval(expenseDate, { start: monthStart, end: monthEnd });
@@ -362,7 +418,7 @@ export default function Expenses() {
                           variant="ghost" 
                           size="icon" 
                           className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg"
-                          onClick={() => handleDelete(expense.id)}
+                          onClick={() => setDeleteConfirm(expense)}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -418,7 +474,7 @@ export default function Expenses() {
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted/10 rounded-xl" onClick={() => handleEdit(expense)}>
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-xl" onClick={() => handleDelete(expense.id)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-xl" onClick={() => setDeleteConfirm(expense)}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
@@ -446,6 +502,63 @@ export default function Expenses() {
             </div>
           )}
         </div>
+        <Dialog open={!!editPrompt} onOpenChange={(open) => !open && setEditPrompt(null)}>
+          <DialogContent className="max-w-md bg-card border-border rounded-3xl p-8">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold uppercase tracking-tight text-foreground">Editar Despesa Recorrente</DialogTitle>
+              <DialogDescription className="text-muted-foreground text-xs mt-2">
+                Esta despesa se repete todos os meses. Como deseja aplicar a alteração?
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-3 mt-6">
+              <Button variant="outline" onClick={() => openEditForm(editPrompt, 'this_month')} className="h-14 justify-start px-4 rounded-xl text-left border-border flex flex-col items-start gap-1 hover:bg-primary/5 hover:border-primary/30 hover:text-primary transition-all">
+                <span className="font-bold text-sm uppercase">Editar Este</span>
+                <span className="text-[10px] text-muted-foreground">Apenas a despesa deste ciclo será alterada.</span>
+              </Button>
+              <Button variant="outline" onClick={() => openEditForm(editPrompt, 'future')} className="h-14 justify-start px-4 rounded-xl text-left border-border flex flex-col items-start gap-1 hover:bg-orange-500/5 hover:border-orange-500/30 hover:text-orange-500 transition-all">
+                <span className="font-bold text-sm uppercase">Editar Recorrência</span>
+                <span className="text-[10px] text-muted-foreground">Altera desta data em diante.</span>
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+          <DialogContent className="max-w-md bg-card border-border rounded-3xl p-8">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold uppercase tracking-tight text-foreground">
+                Excluir Despesa {deleteConfirm?.isRecurrent ? 'Recorrente' : ''}?
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground text-xs mt-2">
+                {deleteConfirm?.isRecurrent 
+                  ? 'Esta despesa se repete todos os meses. Escolha o que deseja excluir:' 
+                  : 'Tem certeza que deseja excluir este lançamento?'}
+              </DialogDescription>
+            </DialogHeader>
+            
+            {deleteConfirm?.isRecurrent ? (
+              <div className="flex flex-col gap-3 mt-6">
+                <Button variant="outline" onClick={() => confirmDelete('this_month')} className="h-14 justify-start px-4 rounded-xl text-left border-border flex flex-col items-start gap-1 hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-all">
+                  <span className="font-bold text-sm uppercase">Excluir Este</span>
+                  <span className="text-[10px] text-muted-foreground">Apenas a despesa deste ciclo será excluída.</span>
+                </Button>
+                <Button variant="outline" onClick={() => confirmDelete('future')} className="h-14 justify-start px-4 rounded-xl text-left border-border flex flex-col items-start gap-1 hover:bg-destructive hover:text-destructive-foreground transition-all text-destructive">
+                  <span className="font-bold text-sm uppercase">Excluir Recorrência</span>
+                  <span className="text-[10px] opacity-80">Encerra a recorrência (histórico passado será mantido).</span>
+                </Button>
+                <div className="flex justify-end pt-4 border-t border-border mt-2">
+                  <Button variant="ghost" onClick={() => setDeleteConfirm(null)} className="h-10 text-xs font-bold uppercase tracking-widest">Cancelar</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-end gap-3 mt-6">
+                <Button variant="ghost" onClick={() => setDeleteConfirm(null)} className="h-12 rounded-xl text-xs font-bold uppercase tracking-widest">Cancelar</Button>
+                <Button variant="destructive" onClick={() => confirmDelete('all')} className="h-12 rounded-xl text-xs font-bold uppercase tracking-widest px-8">Excluir</Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
         <Button 
           className="md:hidden fixed bottom-[88px] right-4 h-14 w-14 rounded-full shadow-xl z-50 flex items-center justify-center p-0"
           onClick={() => {

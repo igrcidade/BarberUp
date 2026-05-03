@@ -40,6 +40,7 @@ export default function Clients() {
   const [viewingClient, setViewingClient] = useState<any>(null);
   const [editingClient, setEditingClient] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
   const [formData, setFormData] = useState({ name: '', phone: '', notes: '' });
 
   useEffect(() => {
@@ -73,9 +74,16 @@ export default function Clients() {
     setIsAddOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Deseja excluir este cliente? Todos os registros serão mantidos.')) {
-      await deleteDocument('clients', id);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    try {
+      await deleteDocument('clients', deleteConfirm);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDeleteConfirm(null);
     }
   };
 
@@ -95,7 +103,13 @@ export default function Clients() {
     if (lastSale) {
       const lastDate = lastSale.createdAt?.toDate ? lastSale.createdAt.toDate() : parseISO(lastSale.createdAt);
       const dayDiff = differenceInDays(new Date(), lastDate);
-      status = dayDiff <= 45 ? 'Ativo' : 'Inativo';
+      if (dayDiff <= 30) {
+        status = 'Ativo';
+      } else if (dayDiff <= 45) {
+        status = 'Alerta';
+      } else {
+        status = 'Inativo';
+      }
       lastDateStr = format(lastDate, 'dd/MM/yyyy');
       lastDateObj = lastDate;
     }
@@ -108,10 +122,11 @@ export default function Clients() {
     stats: getClientStats(c.id)
   }));
 
-  const filteredClients = enrichedClients.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.phone?.includes(searchTerm)
-  ).sort((a, b) => {
+  const filteredClients = enrichedClients.filter(c => {
+    const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.phone?.includes(searchTerm);
+    const matchesFilter = filterStatus === 'all' || c.stats.status === filterStatus;
+    return matchesSearch && matchesFilter;
+  }).sort((a, b) => {
     if (!a.stats.lastDateObj && !b.stats.lastDateObj) {
       if (!a.createdAt && !b.createdAt) return 0;
       if (!a.createdAt) return 1;
@@ -198,8 +213,8 @@ export default function Clients() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-center">
-        <div className="lg:col-span-3 relative group">
+      <div className="flex flex-col gap-6">
+        <div className="relative group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <Input 
             placeholder="Buscar por nome ou telefone..." 
@@ -208,18 +223,69 @@ export default function Clients() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Card className="border-border bg-card rounded-2xl p-4 h-14 flex items-center justify-between border shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Users className="w-4 h-4 text-primary" />
+        
+        <div className="grid grid-cols-3 gap-3 md:gap-6">
+          <Card 
+            className={`border-border bg-card rounded-2xl p-4 flex flex-col items-center sm:flex-row sm:justify-between border shadow-sm cursor-pointer transition-all hover:bg-primary/5 hover:border-primary/50 ${filterStatus === 'Ativo' ? 'ring-2 ring-primary bg-primary/10' : ''}`}
+            onClick={() => setFilterStatus(filterStatus === 'Ativo' ? 'all' : 'Ativo')}
+          >
+            <div className="flex items-center gap-3 max-sm:mb-2">
+              <div className="p-2 bg-primary/10 rounded-lg hidden sm:block">
+                <Users className="w-4 h-4 text-primary" />
+              </div>
+              <span className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest text-center sm:text-left">Base Ativa</span>
             </div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Base Ativa</span>
-          </div>
-          <span className="text-xl font-bold text-foreground">
-            {clients.length} <span className="text-[9px] text-muted-foreground uppercase ml-1">leads</span>
-          </span>
-        </Card>
+            <span className="text-xl sm:text-2xl font-black text-foreground">
+              {enrichedClients.filter(c => c.stats.status === 'Ativo').length}
+            </span>
+          </Card>
+          
+          <Card 
+            className={`border-border bg-card rounded-2xl p-4 flex flex-col items-center sm:flex-row sm:justify-between border shadow-sm cursor-pointer transition-all hover:bg-orange-500/5 hover:border-orange-500/50 ${filterStatus === 'Alerta' ? 'ring-2 ring-orange-500 bg-orange-500/10' : ''}`}
+            onClick={() => setFilterStatus(filterStatus === 'Alerta' ? 'all' : 'Alerta')}
+          >
+            <div className="flex items-center gap-3 max-sm:mb-2">
+              <div className="p-2 bg-orange-500/10 rounded-lg hidden sm:block">
+                <CalendarIcon className="w-4 h-4 text-orange-500" />
+              </div>
+              <span className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest text-center sm:text-left">Alerta</span>
+            </div>
+            <span className="text-xl sm:text-2xl font-black text-foreground">
+              {enrichedClients.filter(c => c.stats.status === 'Alerta').length}
+            </span>
+          </Card>
+
+          <Card 
+            className={`border-border bg-card rounded-2xl p-4 flex flex-col items-center sm:flex-row sm:justify-between border shadow-sm cursor-pointer transition-all hover:bg-destructive/5 hover:border-destructive/50 ${filterStatus === 'Inativo' ? 'ring-2 ring-destructive bg-destructive/10' : ''}`}
+            onClick={() => setFilterStatus(filterStatus === 'Inativo' ? 'all' : 'Inativo')}
+          >
+            <div className="flex items-center gap-3 max-sm:mb-2">
+              <div className="p-2 bg-destructive/10 rounded-lg hidden sm:block">
+                <XCircle className="w-4 h-4 text-destructive" />
+              </div>
+              <span className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest text-center sm:text-left">Inativar</span>
+            </div>
+            <span className="text-xl sm:text-2xl font-black text-foreground">
+              {enrichedClients.filter(c => c.stats.status === 'Inativo').length}
+            </span>
+          </Card>
+        </div>
       </div>
+
+      <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+        <DialogContent className="max-w-md bg-card border-border rounded-3xl p-8">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold uppercase tracking-tight text-foreground">Excluir Cliente?</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Tem certeza que deseja excluir este cliente? O histórico de vendas associado a ele será mantido mas ele não aparecerá mais nesta lista.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-6">
+            <Button variant="ghost" onClick={() => setDeleteConfirm(null)} className="h-12 rounded-xl text-xs font-bold uppercase tracking-widest">Cancelar</Button>
+            <Button variant="destructive" onClick={confirmDelete} className="h-12 rounded-xl text-xs font-bold uppercase tracking-widest px-8">Excluir</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Tabela de Clientes */}
       <Card className="border-border bg-card shadow-sm rounded-3xl overflow-hidden">
@@ -302,7 +368,7 @@ export default function Clients() {
                             variant="ghost" 
                             size="icon" 
                             className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg"
-                            onClick={() => handleDelete(client.id)}
+                            onClick={() => setDeleteConfirm(client.id)}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -349,7 +415,7 @@ export default function Clients() {
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted/10 rounded-xl" onClick={() => handleEdit(client)}>
                           <Pencil className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-xl" onClick={() => handleDelete(client.id)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-xl" onClick={() => setDeleteConfirm(client.id)}>
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>

@@ -151,3 +151,22 @@
 .dark input[type="date"]::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
 }
+
+@media (max-width: 768px) {
+  button:active, 
+  [role="button"]:active,
+  a:active,
+  .barber-button-primary:active,
+  .barber-button-secondary:active {
+    transform: scale(0.95) translateY(2px) !important;
+  }
+  button, 
+  [role="button"],
+  a,
+  .barber-button-primary,
+  .barber-button-secondary {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
+}

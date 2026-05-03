@@ -228,9 +228,16 @@ export default function Sales() {
     setEditingSale(null);
   };
 
-  const handleDeleteSale = async (id: string) => {
-    if (confirm('Deseja realmente excluir esta venda? Esta ação não pode ser desfeita.')) {
-      await deleteDocument('sales', id);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    try {
+      await deleteDocument('sales', deleteConfirm);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDeleteConfirm(null);
     }
   };
 
@@ -431,8 +438,7 @@ export default function Sales() {
                   <motion.button
                     key={s.id}
                     whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="relative flex flex-col items-start p-4 bg-card border border-border rounded-xl text-left transition-all hover:border-primary/50 hover:bg-primary/5 group shadow-sm min-h-[90px]"
+                    className="relative flex flex-col items-start p-4 bg-card border border-border rounded-xl text-left transition-all hover:border-primary/50 hover:bg-primary/5 group shadow-sm min-h-[90px] active:border-primary/50"
                     onClick={() => addToSale(s, 'service')}
                   >
                     <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 line-clamp-1">{s.category}</span>
@@ -463,9 +469,8 @@ export default function Sales() {
                   <motion.button
                     key={p.id}
                     whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.98 }}
                     disabled={p.stock <= 0}
-                    className="relative flex flex-col items-start p-4 bg-card border border-border rounded-xl text-left transition-all hover:border-secondary/50 hover:bg-secondary/5 group shadow-sm min-h-[100px] disabled:opacity-40"
+                    className="relative flex flex-col items-start p-4 bg-card border border-border rounded-xl text-left transition-all hover:border-secondary/50 hover:bg-secondary/5 group shadow-sm min-h-[100px] disabled:opacity-40 active:border-secondary/50"
                     onClick={() => addToSale(p, 'product')}
                   >
                     <div className="flex w-full items-start justify-between mb-2 gap-2">
@@ -510,29 +515,39 @@ export default function Sales() {
           <CardContent className="p-0 flex flex-col">
             <div className={`p-8 space-y-4 ${currentSale.length > 5 ? 'overflow-y-auto max-h-[500px] scrollbar-thin' : ''} ${currentSale.length === 0 ? 'flex items-center justify-center py-20' : ''}`}>
               <AnimatePresence mode="popLayout">
-                {currentSale.map((item) => (
+                {Object.values(currentSale.reduce((acc, curr) => {
+                  if (!acc[curr.id]) {
+                    acc[curr.id] = { ...curr, quantity: 1, saleIds: [curr.saleId] };
+                  } else {
+                    acc[curr.id].quantity += 1;
+                    acc[curr.id].saleIds.push(curr.saleId);
+                  }
+                  return acc;
+                }, {} as Record<string, any>)).map((item: any) => (
                   <motion.div 
                     layout
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
-                    key={item.saleId} 
+                    key={item.id} 
                     className="flex justify-between items-center bg-card p-4 rounded-xl border border-border group shadow-sm hover:border-primary/20 transition-all"
                   >
                     <div className="flex flex-col">
-                      <span className="text-xs font-bold text-foreground leading-none">{item.name}</span>
+                      <span className="text-xs font-bold text-foreground leading-none">
+                        {item.name} {item.quantity > 1 ? <span className="text-primary font-black ml-1">{item.quantity}x</span> : null}
+                      </span>
                       <span className="text-[8px] font-bold text-muted-foreground uppercase mt-1 tracking-wider">
                         {item.type === 'service' ? 'Procedimento' : 'Venda'}
                         {item.brand && ` • ${item.brand}`}
                       </span>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className="font-bold text-sm text-foreground">R$ {item.price.toFixed(2)}</span>
+                      <span className="font-bold text-sm text-foreground">R$ {(item.price * item.quantity).toFixed(2)}</span>
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                        onClick={() => removeFromSale(item.saleId)}
+                        className="h-8 w-8 flex items-center justify-center text-destructive hover:text-white hover:bg-destructive rounded-lg bg-destructive/10 transition-all flex-shrink-0"
+                        onClick={() => removeFromSale(item.saleIds[item.saleIds.length - 1])}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
@@ -634,6 +649,21 @@ export default function Sales() {
               Continuar Atendendo
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+        <DialogContent className="max-w-md bg-card border-border rounded-3xl p-8">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold uppercase tracking-tight text-foreground">Excluir Venda?</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Tem certeza que deseja excluir esta venda? Esta ação não pode ser desfeita. O estoque não será reposto automaticamente se houverem produtos.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-6">
+            <Button variant="ghost" onClick={() => setDeleteConfirm(null)} className="h-12 rounded-xl text-xs font-bold uppercase tracking-widest">Cancelar</Button>
+            <Button variant="destructive" onClick={confirmDelete} className="h-12 rounded-xl text-xs font-bold uppercase tracking-widest px-8">Excluir</Button>
+          </div>
         </DialogContent>
       </Dialog>
 

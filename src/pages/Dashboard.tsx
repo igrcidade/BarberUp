@@ -324,7 +324,7 @@ export default function Dashboard() {
               </span>
             </div>
             
-            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
+            <div className="space-y-3 pr-2">
               {Object.entries(salesByPaymentMethod)
                 .sort((a, b) => (b[1] as any).total - (a[1] as any).total)
                 .map(([method, data]: [string, any]) => (
@@ -365,7 +365,7 @@ export default function Dashboard() {
                 {totalCommissions.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </span>
             </div>
-            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+            <div className="space-y-3 pr-2">
               {barberRanking.filter(b => b.commission > 0).map(b => (
                 <div key={b.id} className="flex justify-between items-center bg-muted/20 p-3 rounded-xl border border-border/50">
                   <div className="flex flex-col">
