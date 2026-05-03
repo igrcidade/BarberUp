@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth';
 import { Navigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, DollarSign, Activity, CheckCircle, Search, Filter } from 'lucide-react';
+import { Users, DollarSign, Activity, CheckCircle, Search, Filter, Trash2, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 export default function MasterAdmin() {
   const { isAdmin } = useAuth();
@@ -52,8 +53,34 @@ export default function MasterAdmin() {
         subscriptionEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
       });
       setUsers(users.map(u => u.id === userId ? { ...u, subscriptionStatus: 'active', subscriptionPlan: 'mensal' } : u));
+      toast.success('Assinatura ativada com sucesso!');
     } catch (e) {
       console.error(e);
+      toast.error('Erro ao ativar assinatura.');
+    }
+  };
+
+  const handleDeactivateUser = async (userId: string) => {
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        subscriptionStatus: 'expired'
+      });
+      setUsers(users.map(u => u.id === userId ? { ...u, subscriptionStatus: 'expired' } : u));
+      toast.success('Usuário desativado com sucesso!');
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao desativar usuário.');
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, email: string) => {
+    try {
+      await deleteDoc(doc(db, 'users', userId));
+      setUsers(users.filter(u => u.id !== userId));
+      toast.success(`Usuário ${email} removido do sistema.`);
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao remover usuário.');
     }
   };
 
@@ -210,30 +237,42 @@ export default function MasterAdmin() {
                      </span>
                   )}
                 </div>
-                <div className="flex items-center gap-4 md:ml-auto">
-                  <div className="flex flex-col text-right">
-                    <Badge variant="outline" className={`ml-auto mb-1 ${
-                      u.subscriptionStatus === 'active' ? 'border-lime-500 text-lime-500 bg-lime-500/10' :
-                      u.subscriptionStatus === 'trial' ? 'border-orange-500 text-orange-500 bg-orange-500/10' :
-                      'border-destructive text-destructive bg-destructive/10'
-                    }`}>
-                      {u.subscriptionStatus === 'active' ? 'Ativo' : u.subscriptionStatus === 'trial' ? 'Trial' : 'Vencido / Inativo'}
-                    </Badge>
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
-                      Plano: {u.subscriptionPlan || 'N/A'}
-                    </span>
-                    {u.subscriptionEnd && (
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
-                        Vence: {format(new Date(u.subscriptionEnd), 'dd/MM/yyyy')}
+                  <div className="flex items-center gap-2 md:ml-auto">
+                    <div className="flex flex-col text-right mr-2">
+                      <Badge variant="outline" className={`ml-auto mb-1 ${
+                        u.subscriptionStatus === 'active' ? 'border-lime-500 text-lime-500 bg-lime-500/10' :
+                        u.subscriptionStatus === 'trial' ? 'border-orange-500 text-orange-500 bg-orange-500/10' :
+                        'border-destructive text-destructive bg-destructive/10'
+                      }`}>
+                        {u.subscriptionStatus === 'active' ? 'Ativo' : u.subscriptionStatus === 'trial' ? 'Trial' : 'Vencido / Inativo'}
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
+                        Plano: {u.subscriptionPlan || 'N/A'}
                       </span>
+                      {u.subscriptionEnd && (
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                          Vence: {format(new Date(u.subscriptionEnd), 'dd/MM/yyyy')}
+                        </span>
+                      )}
+                    </div>
+                    {u.subscriptionStatus !== 'active' ? (
+                      <Button variant="outline" size="sm" onClick={() => simulatePaymentUpdate(u.id)} className="text-[10px] uppercase font-bold tracking-widest hover:text-lime-500 hover:border-lime-500 hover:bg-lime-500/10 h-8">
+                        <CheckCircle className="w-3 h-3 md:mr-1" /> <span className="hidden md:inline">Ativar</span>
+                      </Button>
+                    ) : (
+                      <Button variant="outline" size="sm" onClick={() => handleDeactivateUser(u.id)} className="text-[10px] uppercase font-bold tracking-widest hover:text-orange-500 hover:border-orange-500 hover:bg-orange-500/10 h-8">
+                        <AlertTriangle className="w-3 h-3 md:mr-1" /> <span className="hidden md:inline">Desativar</span>
+                      </Button>
                     )}
-                  </div>
-                  {u.subscriptionStatus !== 'active' && (
-                    <Button variant="outline" size="sm" onClick={() => simulatePaymentUpdate(u.id)} className="text-[10px] uppercase font-bold tracking-widest hover:text-lime-500 hover:border-lime-500 hover:bg-lime-500/10">
-                      <CheckCircle className="w-3 h-3 md:mr-1" /> <span className="hidden md:inline">Ativar Plano (Simulação)</span>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleDeleteUser(u.id, u.email)}
+                      className="text-muted-foreground hover:text-red-500 hover:bg-red-500/10 h-8 w-8"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </Button>
-                  )}
-                </div>
+                  </div>
               </div>
             ))}
             {filteredUsers.length === 0 && (

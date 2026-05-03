@@ -18,16 +18,24 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == request.resource.data.userId;
     }
 
+    function isAdmin() {
+      return isSignedIn() && (request.auth.token.email == 'igor.cidade@hotmail.com' || request.auth.token.email == 'igrcidade@gmail.com');
+    }
+
     // Default deny
     match /{document=**} {
       allow read, write: if false;
     }
 
+    match /leads/{id} {
+      allow create: if true;
+    }
+
     match /users/{userId} {
-      allow read: if isOwner(userId) || (isSignedIn() && request.auth.token.email == 'igor.cidade@hotmail.com');
+      allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || (isSignedIn() && request.auth.token.email == 'igor.cidade@hotmail.com');
-      allow delete: if (isSignedIn() && request.auth.token.email == 'igor.cidade@hotmail.com');
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /profiles/{userId} {
@@ -51,6 +59,12 @@ service cloud.firestore {
       allow read: if isDataOwner();
       allow create: if isIncomingOwner();
       allow update, delete: if isDataOwner() && isIncomingOwner();
+    }
+
+    match /barbers/{id} {
+      allow read: if isDataOwner();
+      allow create: if isIncomingOwner();
+      allow update, delete: if isDataOwner();
     }
 
     match /sales/{id} {

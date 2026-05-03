@@ -84,6 +84,7 @@ export default function Login() {
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 group-focus-within:text-orange-500 transition-colors" />
                   <Input
                     type="email"
+                    autoComplete="email"
                     placeholder="email@barbearia.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -102,6 +103,7 @@ export default function Login() {
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 group-focus-within:text-orange-500 transition-colors" />
                   <Input
                     type="password"
+                    autoComplete="current-password"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}

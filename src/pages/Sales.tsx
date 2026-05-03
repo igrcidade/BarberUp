@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { 
-  Plus, Search, ShoppingCart, Trash2, CheckCircle2, User, Scissors, Package, Pencil 
+  Plus, Search, ShoppingCart, Trash2, CheckCircle2, User, Scissors, Package, Pencil, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
@@ -29,20 +29,41 @@ import { format, parseISO } from 'date-fns';
 import { subscribeToCollection, addDocument, deleteDocument, updateDocument } from '../lib/db';
 import { useAuth } from '@/lib/auth';
 
+const highlightMatch = (text: string, query: string) => {
+  if (!query) return text;
+  const parts = text.split(new RegExp(`(${query})`, 'gi'));
+  return (
+    <>
+      {parts.map((part, i) => 
+        part.toLowerCase() === query.toLowerCase() ? (
+          <span key={i} className="text-primary font-black bg-primary/10 px-1 rounded">{part}</span>
+        ) : (
+          <span key={i} className="text-foreground">{part}</span>
+        )
+      )}
+    </>
+  );
+};
+
 export default function Sales() {
   const { isActive } = useAuth();
   const [sales, setSales] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
+  const [barbers, setBarbers] = useState<any[]>([]);
   
   const [currentSale, setCurrentSale] = useState<any[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('none');
+  const [selectedBarberId, setSelectedBarberId] = useState<string>('none');
   const [paymentMethod, setPaymentMethod] = useState<string>('Dinheiro');
   
   const [serviceSearch, setServiceSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
   const [clientSearch, setClientSearch] = useState('');
+  const [barberSearch, setBarberSearch] = useState('');
+  const [isClientOpen, setIsClientOpen] = useState(false);
+  const [isBarberOpen, setIsBarberOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'services' | 'products'>('services');
 
   const [editingSale, setEditingSale] = useState<any>(null);
@@ -63,12 +84,14 @@ export default function Sales() {
     const unsubServices = subscribeToCollection('services', setServices);
     const unsubProducts = subscribeToCollection('products', setProducts);
     const unsubClients = subscribeToCollection('clients', setClients);
+    const unsubBarbers = subscribeToCollection('barbers', setBarbers);
 
     return () => {
       unsubSales();
       unsubServices();
       unsubProducts();
       unsubClients();
+      unsubBarbers();
     };
   }, []);
 
@@ -110,23 +133,65 @@ export default function Sales() {
     if (currentSale.length === 0) return;
 
     const selectedClient = clients.find(c => c.id === selectedClientId);
+    const selectedBarber = barbers.find(b => b.id === selectedBarberId);
     
-    const saleData = {
-      clientId: selectedClientId === 'none' ? null : selectedClientId,
-      clientName: selectedClient ? selectedClient.name : (clientSearch || 'Venda Avulsa'),
-      items: currentSale.map(item => ({
+    // Calcula a comissão por item dependendo do seu tipo
+    let commissionTotal = 0;
+    
+    const productQuantities: Record<string, number> = {};
+    
+    const items = currentSale.map(item => {
+      let commissionValue = 0;
+      if (selectedBarber) {
+        if (item.type === 'service') {
+          const comRate = selectedBarber.commissionService !== undefined ? selectedBarber.commissionService : (selectedBarber.commission || 0);
+          commissionValue = item.price * (comRate / 100);
+        } else if (item.type === 'product') {
+          const comRate = selectedBarber.commissionProduct || 0;
+          commissionValue = item.price * (comRate / 100);
+        }
+        commissionTotal += commissionValue;
+      }
+      
+      if (item.type === 'product') {
+        if (!productQuantities[item.id]) {
+          productQuantities[item.id] = 0;
+        }
+        productQuantities[item.id] += 1;
+      }
+      
+      return {
         id: item.id,
         name: item.name,
         price: item.price,
-        type: item.type
-      })),
+        type: item.type,
+        commissionValue
+      };
+    });
+
+    for (const [productId, quantity] of Object.entries(productQuantities)) {
+      const product = products.find(p => p.id === productId);
+      if (product) {
+        const newStock = Math.max(0, (product.stock || 0) - quantity);
+        await updateDocument('products', productId, { stock: newStock });
+      }
+    }
+
+    const saleData = {
+      clientId: selectedClientId === 'none' ? null : selectedClientId,
+      clientName: selectedClient ? selectedClient.name : (clientSearch || 'Venda Avulsa'),
+      barberId: selectedBarberId === 'none' ? null : selectedBarberId,
+      barberName: selectedBarber ? selectedBarber.name : null,
+      items,
       total,
       paymentMethod,
+      commissionTotal
     };
 
     await addDocument('sales', saleData);
     setCurrentSale([]);
     setSelectedClientId('none');
+    setSelectedBarberId('none');
     setClientSearch('');
     setIsSuccessOpen(true);
   };
@@ -172,12 +237,17 @@ export default function Sales() {
 
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(productSearch.toLowerCase()) || 
-    p.category.toLowerCase().includes(productSearch.toLowerCase())
+    p.category.toLowerCase().includes(productSearch.toLowerCase()) ||
+    (p.brand && p.brand.toLowerCase().includes(productSearch.toLowerCase()))
   );
 
   const filteredClientsForSelect = clients.filter(c => 
     c.name.toLowerCase().includes(clientSearch.toLowerCase()) || 
     c.phone?.includes(clientSearch)
+  );
+
+  const filteredBarbersForSelect = barbers.filter(b => 
+    b.active && b.name.toLowerCase().includes(barberSearch.toLowerCase())
   );
 
   return (
@@ -193,56 +263,106 @@ export default function Sales() {
           </div>
         </div>
 
-        {/* IDENTIFICAR CLIENTE */}
+        {/* IDENTIFICAR CLIENTE E BARBEIRO */}
         <div className="p-5 bg-card border border-border rounded-2xl shadow-sm space-y-3">
           <div className="flex items-center justify-between">
-            <Label className="text-[10px] font-bold uppercase tracking-widest text-primary">1. Identificar Cliente</Label>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-6 text-[10px] uppercase font-bold tracking-widest px-2"
-              onClick={() => setIsAddClientOpen(true)}
-            >
-              <Plus className="w-3 h-3 mr-1" /> Novo
-            </Button>
+            <Label className="text-[10px] font-bold uppercase tracking-widest text-primary">1. Identificar</Label>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-6 text-[10px] uppercase font-bold tracking-widest px-2"
+                onClick={() => setIsAddClientOpen(true)}
+              >
+                <Plus className="w-3 h-3 mr-1" /> Cliente
+              </Button>
+            </div>
           </div>
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground transition-colors group-focus-within:text-primary" />
-            <Input 
-              placeholder="Nome do cliente ou código..." 
-              className="pl-12 h-14 bg-muted/50 border-border rounded-xl text-base focus:ring-2 focus:ring-primary/20 font-medium"
-              value={clientSearch}
-              onChange={(e) => {
-                setClientSearch(e.target.value);
-                if (selectedClientId !== 'none') setSelectedClientId('none');
-              }}
-            />
-            {clientSearch.length >= 1 && selectedClientId === 'none' && (
-              <div className="absolute z-50 w-full mt-2 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden max-h-[250px] overflow-y-auto">
-                <div 
-                  className="p-4 text-xs cursor-pointer hover:bg-primary/10 border-b border-border font-bold text-primary transition-colors flex items-center gap-2 uppercase tracking-wider"
-                  onClick={() => {
-                    setSelectedClientId('none');
-                    setClientSearch('Consumidor Avulso');
-                  }}
-                >
-                  <User className="w-4 h-4" /> Consumidor Estreante
-                </div>
-                {filteredClientsForSelect.map(c => (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="relative pt-6">
+              <Label className="absolute top-0 left-1 text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Membro / Cliente</Label>
+              <Search className={`absolute left-4 top-[calc(50%+12px)] -translate-y-1/2 h-5 w-5 transition-colors group-focus-within:text-primary ${selectedClientId !== 'none' ? 'text-primary' : 'text-muted-foreground'}`} />
+              <Input 
+                placeholder="Busque o cliente..." 
+                className={`pl-12 pr-10 h-14 bg-muted/50 rounded-xl text-base focus:ring-2 focus:ring-primary/20 font-medium transition-all cursor-pointer ${selectedClientId !== 'none' ? 'border-primary ring-1 ring-primary bg-primary/5 text-primary text-xl font-black' : 'border-border'}`}
+                value={clientSearch}
+                onFocus={() => setIsClientOpen(true)}
+                onBlur={() => setTimeout(() => setIsClientOpen(false), 200)}
+                onChange={(e) => {
+                  setClientSearch(e.target.value);
+                  if (selectedClientId !== 'none') setSelectedClientId('none');
+                }}
+              />
+              <ChevronDown className="absolute right-4 top-[calc(50%+12px)] -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+              {isClientOpen && (
+                <div className="absolute z-[60] w-full mt-2 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden max-h-[250px] overflow-y-auto">
                   <div 
-                    key={c.id} 
-                    className="p-4 text-sm cursor-pointer hover:bg-muted transition-all flex flex-col border-b border-border last:border-0 px-6"
+                    className="p-4 text-xs cursor-pointer hover:bg-primary/10 border-b border-border font-bold text-primary transition-colors flex items-center gap-2 uppercase tracking-wider"
                     onClick={() => {
-                      setSelectedClientId(c.id);
-                      setClientSearch(c.name);
+                      setSelectedClientId('none');
+                      setClientSearch('Consumidor Avulso');
                     }}
                   >
-                    <span className="font-bold text-foreground text-xs uppercase tracking-tight">{c.name}</span>
-                    {c.phone && <span className="text-[9px] text-muted-foreground font-medium mt-0.5">{c.phone}</span>}
+                    <User className="w-4 h-4" /> Consumidor Estreante
                   </div>
-                ))}
-              </div>
-            )}
+                  {filteredClientsForSelect.map(c => (
+                    <div 
+                      key={c.id} 
+                      className="p-4 text-sm cursor-pointer hover:bg-muted transition-all flex flex-col border-b border-border last:border-0 px-6"
+                      onClick={() => {
+                        setSelectedClientId(c.id);
+                        setClientSearch(c.name);
+                      }}
+                    >
+                      <span className="font-bold text-xs uppercase tracking-tight">{highlightMatch(c.name, clientSearch)}</span>
+                      {c.phone && <span className="text-[9px] text-muted-foreground font-medium mt-0.5">{highlightMatch(c.phone, clientSearch)}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="relative pt-6">
+              <Label className="absolute top-0 left-1 text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Barbeiro / Atendimento</Label>
+              <Search className={`absolute left-4 top-[calc(50%+12px)] -translate-y-1/2 h-5 w-5 transition-colors group-focus-within:text-primary ${selectedBarberId !== 'none' ? 'text-primary' : 'text-muted-foreground'}`} />
+              <Input 
+                placeholder="Busque o barbeiro..." 
+                className={`pl-12 pr-10 h-14 bg-muted/50 rounded-xl text-base focus:ring-2 focus:ring-primary/20 font-medium transition-all cursor-pointer ${selectedBarberId !== 'none' ? 'border-primary ring-1 ring-primary bg-primary/5 text-primary text-xl font-black' : 'border-border'}`}
+                value={barberSearch}
+                onFocus={() => setIsBarberOpen(true)}
+                onBlur={() => setTimeout(() => setIsBarberOpen(false), 200)}
+                onChange={(e) => {
+                  setBarberSearch(e.target.value);
+                  if (selectedBarberId !== 'none') setSelectedBarberId('none');
+                }}
+              />
+              <ChevronDown className="absolute right-4 top-[calc(50%+12px)] -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+              {isBarberOpen && (
+                <div className="absolute z-[60] w-full mt-2 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden max-h-[250px] overflow-y-auto">
+                   <div 
+                    className="p-4 text-xs cursor-pointer hover:bg-primary/10 border-b border-border font-bold text-primary transition-colors flex items-center gap-2 uppercase tracking-wider"
+                    onClick={() => {
+                      setSelectedBarberId('none');
+                      setBarberSearch('Sem Barbeiro');
+                    }}
+                  >
+                    <Scissors className="w-4 h-4" /> Sem Barbeiro
+                  </div>
+                  {filteredBarbersForSelect.map(b => (
+                    <div 
+                      key={b.id} 
+                      className="p-4 text-sm cursor-pointer hover:bg-muted transition-all flex flex-col border-b border-border last:border-0 px-6"
+                      onClick={() => {
+                        setSelectedBarberId(b.id);
+                        setBarberSearch(b.name);
+                      }}
+                    >
+                      <span className="font-bold text-xs uppercase tracking-tight">{highlightMatch(b.name, barberSearch)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -282,7 +402,7 @@ export default function Sales() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto pr-2 space-y-8 scrollbar-thin">
+        <div className="flex-1 overflow-y-auto px-2 -mx-2 py-2 -my-2 space-y-8 scrollbar-thin">
           {/* Catalogo de Serviços */}
           {activeTab === 'services' && filteredServices.length > 0 && (
             <div className="space-y-4">
@@ -292,25 +412,22 @@ export default function Sales() {
                 </div>
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">Serviços Profissionais</h3>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {filteredServices.map(s => (
                   <motion.button
                     key={s.id}
-                    whileHover={{ y: -2, shadow: "0 10px 20px -10px rgba(0,0,0,0.1)" }}
+                    whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
-                    className="flex flex-col p-5 bg-card border border-border rounded-2xl text-left transition-all hover:border-primary/30 group shadow-sm"
+                    className="relative flex flex-col items-start p-4 bg-card border border-border rounded-xl text-left transition-all hover:border-primary/50 hover:bg-primary/5 group shadow-sm min-h-[90px]"
                     onClick={() => addToSale(s, 'service')}
                   >
-                    <div className="flex justify-between items-start mb-4">
-                      <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-widest bg-muted/50 border-border text-muted-foreground py-0.5 px-2 rounded-md">
-                        {s.category}
-                      </Badge>
-                      <Plus className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                    </div>
-                    <span className="text-sm font-bold text-foreground leading-tight mb-2 group-hover:text-primary transition-colors">{s.name}</span>
-                    <div className="mt-auto flex items-baseline gap-1">
-                      <span className="text-[10px] font-bold text-muted-foreground opacity-50 uppercase">R$</span>
-                      <span className="text-xl font-bold text-foreground tracking-tight">{s.price.toFixed(2)}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 line-clamp-1">{s.category}</span>
+                    <span className="text-xs font-bold text-foreground leading-tight line-clamp-2 mb-2 group-hover:text-primary transition-colors">{s.name}</span>
+                    <div className="mt-auto flex items-center justify-between w-full">
+                      <span className="text-sm font-black text-foreground">R$ {s.price.toFixed(2)}</span>
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                        <Plus className="w-4 h-4" />
+                      </div>
                     </div>
                   </motion.button>
                 ))}
@@ -327,28 +444,29 @@ export default function Sales() {
                 </div>
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">Produtos & Home Care</h3>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {filteredProducts.map(p => (
                   <motion.button
                     key={p.id}
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     disabled={p.stock <= 0}
-                    className="flex flex-col p-5 bg-card border border-border rounded-2xl text-left transition-all hover:border-secondary/50 group shadow-sm disabled:opacity-40"
+                    className="relative flex flex-col items-start p-4 bg-card border border-border rounded-xl text-left transition-all hover:border-secondary/50 hover:bg-secondary/5 group shadow-sm min-h-[100px] disabled:opacity-40"
                     onClick={() => addToSale(p, 'product')}
                   >
-                    <div className="flex justify-between items-start mb-4">
-                      <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-widest bg-muted/50 border-border text-muted-foreground py-0.5 px-2 rounded-md">
-                        {p.category}
-                      </Badge>
-                      <div className="flex flex-col items-end">
-                        <span className={`text-[8px] font-bold uppercase ${p.stock <= (p.minStock || 5) ? 'text-destructive' : 'text-muted-foreground'}`}>Estoque: {p.stock}</span>
+                    <div className="flex w-full items-start justify-between mb-2 gap-2">
+                      <div className="flex flex-col gap-1 pr-2">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground leading-none">{p.category}</span>
+                        {p.brand && <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground leading-none line-clamp-1">{p.brand}</span>}
                       </div>
+                      <span className={`text-[9px] font-bold uppercase shrink-0 mt-0.5 ${p.stock <= (p.minStock || 5) ? 'text-destructive' : 'text-emerald-500'}`}>{p.stock} un</span>
                     </div>
-                    <span className="text-sm font-bold text-foreground leading-tight mb-2 group-hover:text-secondary-foreground transition-colors">{p.name}</span>
-                    <div className="mt-auto flex items-baseline gap-1">
-                      <span className="text-[10px] font-bold text-muted-foreground opacity-50 uppercase">R$</span>
-                      <span className="text-xl font-bold text-foreground tracking-tight">{p.price.toFixed(2)}</span>
+                    <span className="text-xs font-bold text-foreground leading-tight line-clamp-2 mb-2 group-hover:text-secondary-foreground transition-colors">{p.name}</span>
+                    <div className="mt-auto flex items-center justify-between w-full">
+                      <span className="text-sm font-black text-foreground">R$ {p.price.toFixed(2)}</span>
+                      <div className="w-6 h-6 rounded-full bg-secondary/10 flex items-center justify-center text-secondary-foreground group-hover:bg-secondary group-hover:text-secondary-foreground transition-colors">
+                        <Plus className="w-4 h-4" />
+                      </div>
                     </div>
                   </motion.button>
                 ))}
@@ -389,7 +507,10 @@ export default function Sales() {
                   >
                     <div className="flex flex-col">
                       <span className="text-xs font-bold text-foreground leading-none">{item.name}</span>
-                      <span className="text-[8px] font-bold text-muted-foreground uppercase mt-1 tracking-wider">{item.type === 'service' ? 'Procedimento' : 'Venda'}</span>
+                      <span className="text-[8px] font-bold text-muted-foreground uppercase mt-1 tracking-wider">
+                        {item.type === 'service' ? 'Procedimento' : 'Venda'}
+                        {item.brand && ` • ${item.brand}`}
+                      </span>
                     </div>
                     <div className="flex items-center gap-4">
                       <span className="font-bold text-sm text-foreground">R$ {item.price.toFixed(2)}</span>
@@ -417,7 +538,7 @@ export default function Sales() {
               )}
             </div>
 
-            <div className="p-8 space-y-6 border-t border-border bg-muted/20">
+            <div className="p-8 space-y-6 border-t border-border bg-muted/20 max-md:pb-[200px]">
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-primary ml-1">3. Método de Pagamento</Label>
@@ -426,34 +547,34 @@ export default function Sales() {
                       <SelectValue placeholder="Forma de Pagamento" />
                     </SelectTrigger>
                     <SelectContent className="bg-card border-border text-foreground rounded-xl">
-                      <SelectItem value="Dinheiro" className="text-[10px] font-bold uppercase py-3">Dinheiro Vivo</SelectItem>
-                      <SelectItem value="Cartão de Crédito" className="text-[10px] font-bold uppercase py-3">Crédito à Vista</SelectItem>
-                      <SelectItem value="Cartão de Débito" className="text-[10px] font-bold uppercase py-3">Débito</SelectItem>
-                      <SelectItem value="Pix" className="text-[10px] font-bold uppercase py-3 text-emerald-500 font-black">PIX Instantâneo</SelectItem>
+                      <SelectItem value="Crédito" className="text-[10px] font-bold uppercase py-3">Crédito</SelectItem>
+                      <SelectItem value="Débito" className="text-[10px] font-bold uppercase py-3">Débito</SelectItem>
+                      <SelectItem value="Dinheiro" className="text-[10px] font-bold uppercase py-3">Dinheiro</SelectItem>
+                      <SelectItem value="Pix" className="text-[10px] font-bold uppercase py-3 text-emerald-500 font-black">Pix</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              <div className="space-y-4 pt-4 border-t border-border">
+              <div className="space-y-4 pt-4 border-t border-border max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:z-40 max-md:bg-background/90 max-md:backdrop-blur-xl max-md:p-4 max-md:border-t-solid max-md:shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)]">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Subtotal</span>
                   <span className="text-sm font-bold text-foreground">R$ {total.toFixed(2)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-foreground uppercase tracking-wider italic">Total do Caixa</span>
-                  <span className="text-3xl font-bold text-primary tracking-tighter">
+                  <span className="text-3xl max-md:text-2xl font-bold text-primary tracking-tighter">
                     <span className="text-xs mr-1 font-medium text-primary opacity-50 not-italic">R$</span>
                     {total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
 
                 <Button
-                  className="barber-button-primary w-full h-16 text-sm flex items-center justify-center gap-3 disabled:opacity-20 transition-all shadow-lg shadow-primary/20" 
+                  className="barber-button-primary w-full h-16 max-md:h-14 text-sm flex items-center justify-center gap-3 disabled:opacity-20 transition-all shadow-lg shadow-primary/20" 
                   disabled={currentSale.length === 0 || !isActive}
                   onClick={finalizeSale}
                 >
-                  <CheckCircle2 className="w-5 h-5" /> FINALIZAR VENDA
+                  <CheckCircle2 className="w-5 h-5 max-md:w-4 max-md:h-4" /> FINALIZAR VENDA
                 </Button>
               </div>
             </div>
@@ -562,8 +683,8 @@ function EditSaleDialog({ isOpen, onOpenChange, formData, setFormData, onSave, s
           <DialogDescription className="text-muted-foreground text-xs font-medium">Modifique itens ou a forma de pagamento da venda selecionada</DialogDescription>
         </DialogHeader>
         
-        <div className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-thin">
-          <div className="grid grid-cols-2 gap-8">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-8 scrollbar-thin">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
             <div className="space-y-2.5">
               <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest ml-1">Forma de Pagamento</Label>
               <Select value={formData.paymentMethod} onValueChange={(val) => setFormData({ ...formData, paymentMethod: val })}>
@@ -571,9 +692,9 @@ function EditSaleDialog({ isOpen, onOpenChange, formData, setFormData, onSave, s
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border text-foreground rounded-xl">
+                  <SelectItem value="Crédito" className="text-[10px] font-bold uppercase">Crédito</SelectItem>
+                  <SelectItem value="Débito" className="text-[10px] font-bold uppercase">Débito</SelectItem>
                   <SelectItem value="Dinheiro" className="text-[10px] font-bold uppercase">Dinheiro</SelectItem>
-                  <SelectItem value="Cartão de Crédito" className="text-[10px] font-bold uppercase">Cartão de Crédito</SelectItem>
-                  <SelectItem value="Cartão de Débito" className="text-[10px] font-bold uppercase">Cartão de Débito</SelectItem>
                   <SelectItem value="Pix" className="text-[10px] font-bold uppercase">Pix</SelectItem>
                 </SelectContent>
               </Select>
@@ -595,7 +716,10 @@ function EditSaleDialog({ isOpen, onOpenChange, formData, setFormData, onSave, s
                     <Badge variant="outline" className={`text-[8px] font-bold uppercase ${item.type === 'service' ? 'text-primary border-primary/20 bg-primary/5' : 'text-blue-500 border-blue-500/20 bg-blue-500/5'}`}>
                       {item.type === 'service' ? 'Serviço' : 'Produto'}
                     </Badge>
-                    <span className="font-bold text-foreground text-sm tracking-tight">{item.name}</span>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-foreground text-sm tracking-tight">{item.name}</span>
+                      {item.brand && <span className="text-[9px] font-bold uppercase text-muted-foreground">{item.brand}</span>}
+                    </div>
                   </div>
                   <div className="flex items-center gap-6">
                     <span className="font-bold text-foreground text-sm">R$ {item.price.toFixed(2)}</span>
@@ -613,7 +737,7 @@ function EditSaleDialog({ isOpen, onOpenChange, formData, setFormData, onSave, s
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-8 pt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 pt-4">
             <div className="space-y-4">
               <div className="flex items-center gap-2 ml-1">
                 <Scissors className="w-3 h-3 text-primary" />
@@ -643,11 +767,14 @@ function EditSaleDialog({ isOpen, onOpenChange, formData, setFormData, onSave, s
                   <Button 
                     key={p.id} 
                     variant="ghost" 
-                    className="w-full justify-between text-[10px] h-10 hover:bg-secondary/10 hover:text-secondary-foreground rounded-xl px-4 font-bold border border-transparent hover:border-secondary/20 uppercase tracking-wider" 
+                    className="w-full justify-between text-[10px] h-auto py-3 hover:bg-secondary/10 hover:text-secondary-foreground rounded-xl px-4 font-bold border border-transparent hover:border-secondary/20 uppercase tracking-wider items-start text-left" 
                     onClick={() => addItem(p, 'product')}
                   >
-                    <span>{p.name}</span>
-                    <Plus className="w-3.5 h-3.5" />
+                    <div className="flex flex-col">
+                      <span>{p.name}</span>
+                      {p.brand && <span className="text-[8px] text-muted-foreground">{p.brand}</span>}
+                    </div>
+                    <Plus className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                   </Button>
                 ))}
               </div>

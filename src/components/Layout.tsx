@@ -14,8 +14,13 @@ import {
   AlertCircle,
   ShieldCheck,
   CreditCard,
-  User as UserIcon
+  User as UserIcon,
+  Clock,
+  ChevronRight,
+  Mail,
+  Menu
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from './ThemeProvider';
 import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -32,17 +37,49 @@ import {
   SidebarMenuButton,
   SidebarProvider,
   SidebarTrigger,
-  SidebarInset
+  SidebarInset,
+  useSidebar
 } from '@/components/ui/sidebar';
+
+const NavigationItem = ({ item, isItemActive }: { key?: string, item: any, isItemActive: boolean }) => {
+  const { isMobile, setOpenMobile } = useSidebar();
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton 
+        render={<Link to={item.path} className="flex items-center gap-3 w-full" onClick={() => isMobile && setOpenMobile(false)} />}
+        isActive={isItemActive}
+        tooltip={item.title}
+        className={`
+          group h-11 rounded-xl transition-all duration-300 px-3
+          ${isItemActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}
+        `}
+      >
+        <div className={`
+          p-1.5 rounded-lg transition-all
+          ${isItemActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'}
+        `}>
+          <item.icon className="w-4 h-4" />
+        </div>
+        <span className="font-bold text-xs tracking-tight uppercase">{item.title}</span>
+        {item.highlight && !isItemActive && (
+          <Badge variant="secondary" className="ml-auto text-[8px] px-1.5 py-0 rounded-md font-bold uppercase">PDV</Badge>
+        )}
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+};
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useAuth } from '../lib/auth';
+import { toast } from 'sonner';
 
 const getMenuItems = (isAdmin: boolean) => {
   const items = [
     { title: 'Vender', icon: ShoppingCart, path: '/app/sales', highlight: true },
     { title: 'Dashboard', icon: LayoutDashboard, path: '/app/dashboard' },
+    { title: 'Barbeiros', icon: Users, path: '/app/barbers' },
     { title: 'Serviços', icon: Scissors, path: '/app/services' },
     { title: 'Produtos', icon: Package, path: '/app/products' },
     { title: 'Clientes', icon: Users, path: '/app/clients' },
@@ -72,9 +109,23 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     navigate('/');
   };
 
+  // Calculate days left for alert
+  const getDaysLeft = () => {
+    if (!profile?.subscriptionEnd || isAdmin) return null;
+    const end = new Date(profile.subscriptionEnd);
+    const now = new Date();
+    const diffTime = end.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const daysLeft = getDaysLeft();
+  const showExpirationAlert = daysLeft !== null && daysLeft <= 5 && daysLeft >= 0;
+
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background transition-colors duration-500 font-sans selection:bg-primary selection:text-primary-foreground">
+      <div className="flex min-h-screen w-full bg-background transition-colors duration-500 font-sans selection:bg-primary selection:text-primary-foreground text-foreground">
+        
         {/* Decorative background elements */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />
@@ -102,28 +153,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   {menuItems.map((item) => {
                     const isItemActive = location.pathname === item.path;
                     return (
-                      <SidebarMenuItem key={item.path}>
-                        <SidebarMenuButton 
-                          render={<Link to={item.path} className="flex items-center gap-3 w-full" />}
-                          isActive={isItemActive}
-                          tooltip={item.title}
-                          className={`
-                            group h-11 rounded-xl transition-all duration-300 px-3
-                            ${isItemActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}
-                          `}
-                        >
-                          <div className={`
-                            p-1.5 rounded-lg transition-all
-                            ${isItemActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'}
-                          `}>
-                            <item.icon className="w-4 h-4" />
-                          </div>
-                          <span className="font-bold text-xs tracking-tight uppercase">{item.title}</span>
-                          {item.highlight && !isItemActive && (
-                            <Badge variant="secondary" className="ml-auto text-[8px] px-1.5 py-0 rounded-md font-bold uppercase">PDV</Badge>
-                          )}
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
+                      <NavigationItem key={item.path} item={item} isItemActive={isItemActive} />
                     );
                   })}
                 </SidebarMenu>
@@ -174,21 +204,51 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </SidebarFooter>
         </Sidebar>
         
-        <SidebarInset className="flex w-full flex-col bg-transparent relative z-0">
-          <header className="flex h-16 items-center justify-between px-6 gap-4 sticky top-0 z-50 lg:hidden bg-background/80 backdrop-blur-md border-b border-border">
+        <SidebarInset className="flex w-full flex-col bg-transparent relative z-0 pb-0">
+          <header className="flex h-16 items-center justify-between px-4 sm:px-6 gap-4 sticky top-0 z-50 md:hidden bg-background/80 backdrop-blur-md border-b border-border">
             <div className="flex items-center gap-3">
-              <SidebarTrigger className="text-foreground" />
-              <div className="font-bold text-foreground tracking-tight text-lg uppercase">
+              <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
+              <div className="font-bold text-foreground tracking-tight text-lg uppercase flex items-center gap-2">
+                <div className="bg-primary p-1.5 rounded-lg">
+                  <Scissors className="w-3 h-3 text-primary-foreground" />
+                </div>
                 {menuItems.find(item => item.path === location.pathname)?.title || 'Painel'}
               </div>
             </div>
-            <div className="bg-primary p-2 rounded-lg shadow-sm">
-              <Scissors className="w-4 h-4 text-primary-foreground" />
-            </div>
+            {/* Avatar or other top action can go here */}
           </header>
           
           <main className="flex-1 p-4 md:p-8 lg:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
             <div className="max-w-[1600px] mx-auto">
+              {/* EXPIRATION ALERT POPUP (Floating Top) */}
+              <AnimatePresence>
+                {showExpirationAlert && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -50 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -50 }}
+                    className="mb-8"
+                  >
+                    <div className="bg-orange-600/10 border border-orange-600/20 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-orange-600 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-orange-600/20">
+                          <Clock className="w-6 h-6 text-white animate-pulse" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold uppercase tracking-tight text-white">Sua assinatura vence em {daysLeft} {daysLeft === 1 ? 'dia' : 'dias'}!</h4>
+                          <p className="text-xs font-bold uppercase tracking-widest text-orange-200/60 mt-1">Renove agora para não perder o acesso à sua barbearia.</p>
+                        </div>
+                      </div>
+                      <Link to="/app/subscription">
+                        <Button className="bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs uppercase tracking-widest shrink-0 h-11 px-6 rounded-xl flex items-center gap-2 group">
+                          RENOVAR AGORA <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {!isActive && (
                 <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-3 text-red-500">
@@ -205,7 +265,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </Link>
                 </div>
               )}
-              {isActive && profile?.subscriptionStatus === 'trial' && (
+              {isActive && profile?.subscriptionStatus === 'trial' && !isAdmin && (
                 <div className="bg-orange-500/10 border border-orange-500/20 p-4 rounded-2xl mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-3 text-orange-500">
                     <AlertCircle className="w-5 h-5 shrink-0" />

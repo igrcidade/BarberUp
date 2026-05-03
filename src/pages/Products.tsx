@@ -32,7 +32,7 @@ export default function Products() {
   const [products, setProducts] = useState<any[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
-  const [formData, setFormData] = useState({ name: '', price: '', stock: '', category: 'Cabelo', minStock: '5' });
+  const [formData, setFormData] = useState({ name: '', brand: '', price: '', stock: '', category: 'Cabelo', minStock: '5' });
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -54,13 +54,14 @@ export default function Products() {
     }
     setIsOpen(false);
     setEditingProduct(null);
-    setFormData({ name: '', price: '', stock: '', category: 'Cabelo', minStock: '5' });
+    setFormData({ name: '', brand: '', price: '', stock: '', category: 'Cabelo', minStock: '5' });
   };
 
   const handleEdit = (product: any) => {
     setEditingProduct(product);
     setFormData({ 
       name: product.name, 
+      brand: product.brand || '',
       price: product.price.toString(), 
       stock: product.stock.toString(),
       category: product.category,
@@ -77,7 +78,8 @@ export default function Products() {
 
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.category.toLowerCase().includes(searchTerm.toLowerCase())
+    p.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.brand && p.brand.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -94,10 +96,10 @@ export default function Products() {
           setIsOpen(open);
           if (!open) {
             setEditingProduct(null);
-            setFormData({ name: '', price: '', stock: '', category: 'Cabelo', minStock: '5' });
+            setFormData({ name: '', brand: '', price: '', stock: '', category: 'Cabelo', minStock: '5' });
           }
         }}>
-          <DialogTrigger render={<Button disabled={!isActive} className="barber-button-primary h-12 px-8 shadow-md" />}>
+          <DialogTrigger render={<Button disabled={!isActive} className="hidden md:flex barber-button-primary h-12 px-8 shadow-md" />}>
             <Plus className="w-5 h-5 mr-1" /> NOVO PRODUTO
           </DialogTrigger>
           <DialogContent className="bg-card border-border rounded-3xl p-0 overflow-hidden shadow-2xl">
@@ -109,17 +111,28 @@ export default function Products() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="p-8 space-y-6">
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Nome do Produto</Label>
-                  <Input 
-                    placeholder="Ex: Pomada Efeito Matte 150g"
-                    className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
-                    value={formData.name} 
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
-                    required 
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Nome do Produto</Label>
+                    <Input 
+                      placeholder="Ex: Pomada Efeito Matte 150g"
+                      className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
+                      value={formData.name} 
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
+                      required 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Marca</Label>
+                    <Input 
+                      placeholder="Ex: Fox for Men"
+                      className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
+                      value={formData.brand} 
+                      onChange={(e) => setFormData({ ...formData, brand: e.target.value })} 
+                    />
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Preço Venda (R$)</Label>
                     <Input 
@@ -144,7 +157,7 @@ export default function Products() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Categoria</Label>
                     <Select value={formData.category} onValueChange={(val) => setFormData({ ...formData, category: val })}>
@@ -192,7 +205,7 @@ export default function Products() {
       </div>
 
       <Card className="border-border bg-card shadow-sm rounded-3xl overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto hidden md:block">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent border-border bg-muted/40">
@@ -221,7 +234,12 @@ export default function Products() {
                           <div className="w-9 h-9 rounded-lg bg-muted border border-border flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
                             <Package className="w-4 h-4 text-primary" />
                           </div>
-                          <div className="font-bold text-foreground text-sm tracking-tight uppercase">{product.name}</div>
+                          <div className="flex flex-col">
+                            <div className="font-bold text-foreground text-sm tracking-tight uppercase">{product.name}</div>
+                            {product.brand && (
+                              <div className="text-[10px] font-bold text-muted-foreground uppercase opacity-70">{product.brand}</div>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -231,8 +249,9 @@ export default function Products() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <div className={`px-3 py-1 rounded-lg text-[10px] font-bold border flex items-center gap-2 uppercase tracking-tight transition-colors ${isLowStock ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-muted/50 text-foreground border-border'}`}>
-                            {product.stock} em estoque
+                          <div className={`px-3 py-1 rounded-lg text-[10px] font-bold border flex items-center gap-2 tracking-tight transition-colors ${isLowStock ? 'bg-destructive/10 text-destructive border-destructive/20' : 'bg-muted/50 text-foreground border-border'}`}>
+                            <span className="text-sm font-black">{product.stock}</span>
+                            <span className="opacity-70 uppercase text-[9px]">em estoque</span>
                             {isLowStock && <AlertCircle className="w-3.5 h-3.5" />}
                           </div>
                         </div>
@@ -268,6 +287,72 @@ export default function Products() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Mobile View */}
+        <div className="md:hidden flex flex-col p-4 space-y-4">
+          <AnimatePresence mode="popLayout">
+            {filteredProducts.map((product, i) => {
+              const isLowStock = product.stock <= (product.minStock || 5);
+              return (
+                <motion.div
+                  layout
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                  key={product.id}
+                >
+                  <Card className="p-4 border border-border/50 bg-card shadow-sm hover:bg-muted/10 transition-colors">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                          <Package className="w-5 h-5" />
+                        </div>
+                        <div className="flex flex-col">
+                          <h3 className="font-bold text-foreground leading-tight mb-0.5 text-sm uppercase">{product.name}</h3>
+                          <div className={`text-[9px] tracking-widest uppercase font-bold text-muted-foreground flex items-center gap-1`}>
+                            {product.brand} • {product.category}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex bg-muted/50 rounded-lg shrink-0">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted/10 rounded-xl" onClick={() => handleEdit(product)}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-xl" onClick={() => handleDelete(product.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-border/50">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold">Estoque</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className={`font-black tracking-tight ${isLowStock ? 'text-destructive' : 'text-foreground'}`}>{product.stock} un</span>
+                          {isLowStock && <AlertCircle className="w-3.5 h-3.5 text-destructive" />}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold">Valor</span>
+                        <span className="font-bold text-sm tracking-tight mt-0.5">R$ {product.price.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+        <Button 
+          className="md:hidden fixed bottom-[88px] right-4 h-14 w-14 rounded-full shadow-xl z-50 flex items-center justify-center p-0"
+          onClick={() => {
+            setEditingProduct(null);
+            setFormData({ name: '', price: '0', category: '', duration: '', stock: '0', minStock: '5', brand: '' });
+            setIsOpen(true);
+          }}
+          disabled={!isActive}
+        >
+          <Plus className="w-6 h-6" />
+        </Button>
       </Card>
     </div>
   );

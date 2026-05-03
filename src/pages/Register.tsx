@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ export default function Register() {
   const [shopName, setShopName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showTerms, setShowTerms] = useState(false);
@@ -33,6 +34,27 @@ export default function Register() {
     
     if (!email.includes('@') || !email.includes('.')) {
       setError('Por favor, insira um e-mail válido.');
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('A senha deve ter pelo menos 6 caracteres.');
+      setLoading(false);
+      return;
+    }
+
+    // Regra: Letras e Números (Alfanumérico)
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    if (!hasLetter || !hasNumber) {
+      setError('A senha deve conter obrigatoriamente letras e números.');
+      setLoading(false);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('As senhas não coincidem.');
       setLoading(false);
       return;
     }
@@ -120,45 +142,49 @@ export default function Register() {
               )}
             </div>
 
-            <form onSubmit={handleRegister} className="grid md:grid-cols-2 gap-3">
+            <form onSubmit={handleRegister} className="flex flex-col gap-3">
               {error && (
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="md:col-span-2 bg-red-500/10 border border-red-500/20 text-red-500 p-2 rounded-xl flex items-center gap-2 text-xs font-bold"
+                  className="bg-red-500/10 border border-red-500/20 text-red-500 p-2 rounded-xl flex items-center gap-2 text-xs font-bold"
                 >
                   <AlertCircle className="w-4 h-4" />
                   {error}
                 </motion.div>
               )}
 
-              <div className="space-y-1">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ml-1">Seu Nome Completo</Label>
-                <div className="relative group">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 group-focus-within:text-[#bef264] transition-colors" />
-                  <Input
-                    type="text"
-                    placeholder="Ex: João Barber"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    className="bg-white/5 border-white/10 rounded-xl h-10 pl-11 text-white font-bold placeholder:text-zinc-700 focus:border-[#bef264] focus:ring-[#bef264]/20 transition-all text-sm"
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ml-1">Seu Nome Completo</Label>
+                  <div className="relative group">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 group-focus-within:text-[#bef264] transition-colors" />
+                    <Input
+                      type="text"
+                      autoComplete="name"
+                      placeholder="Ex: João Barber"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      className="bg-white/5 border-white/10 rounded-xl h-10 pl-11 text-white font-bold placeholder:text-zinc-700 focus:border-[#bef264] focus:ring-[#bef264]/20 transition-all text-sm"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-1">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ml-1">Nome da Barbearia</Label>
-                <div className="relative group">
-                  <Building className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 group-focus-within:text-[#bef264] transition-colors" />
-                  <Input
-                    type="text"
-                    placeholder="Ex: Gold Cuts"
-                    value={shopName}
-                    onChange={(e) => setShopName(e.target.value)}
-                    required
-                    className="bg-white/5 border-white/10 rounded-xl h-10 pl-11 text-white font-bold placeholder:text-zinc-700 focus:border-[#bef264] focus:ring-[#bef264]/20 transition-all text-sm"
-                  />
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ml-1">Nome da Barbearia</Label>
+                  <div className="relative group">
+                    <Building className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 group-focus-within:text-[#bef264] transition-colors" />
+                    <Input
+                      type="text"
+                      autoComplete="organization"
+                      placeholder="Ex: Gold Cuts"
+                      value={shopName}
+                      onChange={(e) => setShopName(e.target.value)}
+                      required
+                      className="bg-white/5 border-white/10 rounded-xl h-10 pl-11 text-white font-bold placeholder:text-zinc-700 focus:border-[#bef264] focus:ring-[#bef264]/20 transition-all text-sm"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -168,6 +194,7 @@ export default function Register() {
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 group-focus-within:text-[#bef264] transition-colors" />
                   <Input
                     type="email"
+                    autoComplete="email"
                     placeholder="email@barber.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -178,12 +205,13 @@ export default function Register() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ml-1">Senha Forte</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ml-1">Senha (Letras e Números)</Label>
                 <div className="relative group">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 group-focus-within:text-[#bef264] transition-colors" />
                   <Input
                     type="password"
-                    placeholder="••••••••"
+                    autoComplete="new-password"
+                    placeholder="Min. 6 caracteres"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -192,7 +220,23 @@ export default function Register() {
                 </div>
               </div>
 
-              <div className="md:col-span-2 pt-1">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ml-1">Confirmar Senha</Label>
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 group-focus-within:text-[#bef264] transition-colors" />
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="Repita sua senha"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    className="bg-white/5 border-white/10 rounded-xl h-10 pl-11 text-white font-bold placeholder:text-zinc-700 focus:border-[#bef264] focus:ring-[#bef264]/20 transition-all text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2">
                 <Button
                   type="submit"
                   disabled={loading}

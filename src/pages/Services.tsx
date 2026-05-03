@@ -91,7 +91,7 @@ export default function Services() {
             setFormData({ name: '', price: '', category: 'Cabelo', duration: '30' });
           }
         }}>
-          <DialogTrigger render={<Button disabled={!isActive} className="barber-button-primary h-12 px-8 shadow-md" />}>
+          <DialogTrigger render={<Button disabled={!isActive} className="hidden md:flex barber-button-primary h-12 px-8 shadow-md" />}>
             <Plus className="w-5 h-5 mr-1" /> NOVO SERVIÇO
           </DialogTrigger>
           <DialogContent className="bg-card border-border rounded-3xl p-0 overflow-hidden shadow-2xl">
@@ -113,7 +113,7 @@ export default function Services() {
                     required 
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Preço (R$)</Label>
                     <Input 
@@ -174,7 +174,7 @@ export default function Services() {
       </div>
 
       <Card className="border-border bg-card shadow-sm rounded-3xl overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto hidden md:block">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent border-border bg-muted/40">
@@ -244,6 +244,66 @@ export default function Services() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Mobile View */}
+        <div className="md:hidden flex flex-col p-4 space-y-4">
+          <AnimatePresence mode="popLayout">
+            {filteredServices.map((service, i) => (
+              <motion.div
+                layout
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.03 }}
+                key={service.id}
+              >
+                <Card className="p-4 border border-border/50 bg-card shadow-sm hover:bg-muted/10 transition-colors">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                        <Scissors className="w-5 h-5" />
+                      </div>
+                      <div className="flex flex-col">
+                        <h3 className="font-bold text-foreground leading-none mb-1 text-sm uppercase">{service.name}</h3>
+                        <span className={`text-[9px] tracking-widest uppercase font-bold text-muted-foreground`}>
+                          {service.category}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex bg-muted/50 rounded-lg">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted/10 rounded-xl" onClick={() => handleEdit(service)}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-xl" onClick={() => handleDelete(service.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-border/50">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold">Duração</span>
+                      <span className="font-bold text-xs">{service.duration || '--'} min</span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold">Preço</span>
+                      <span className="font-bold text-sm tracking-tight">R$ {service.price.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </Card>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+        <Button 
+          className="md:hidden fixed bottom-[88px] right-4 h-14 w-14 rounded-full shadow-xl z-50 flex items-center justify-center p-0"
+          onClick={() => {
+            setEditingService(null);
+            setFormData({ name: '', price: '0', category: '', duration: '', stock: '', minStock: '', brand: '' });
+            setIsOpen(true);
+          }}
+          disabled={!isActive}
+        >
+          <Plus className="w-6 h-6" />
+        </Button>
       </Card>
     </div>
   );

@@ -154,7 +154,7 @@ export default function Expenses() {
             setIsOpen(open);
             if (!open) resetForm();
           }}>
-            <DialogTrigger render={<Button disabled={!isActive} className="barber-button-primary h-12 px-8 shadow-md" />}>
+            <DialogTrigger render={<Button disabled={!isActive} className="hidden md:flex barber-button-primary h-12 px-8 shadow-md" />}>
               <Plus className="w-5 h-5 mr-1" /> NOVO LANÇAMENTO
             </DialogTrigger>
             <DialogContent className="bg-card border-border rounded-3xl p-0 overflow-hidden shadow-2xl max-w-lg">
@@ -176,7 +176,7 @@ export default function Expenses() {
                       required 
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Montante (R$)</Label>
                       <Input 
@@ -268,14 +268,22 @@ export default function Expenses() {
             <div className="p-2 bg-muted rounded-lg border border-border">
               <PieChart className="w-4 h-4 text-muted-foreground" />
             </div>
-            <span className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">Categorias</span>
+            <span className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">Categorias Ativas</span>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {categories.slice(0, 4).map(cat => (
+          <div className="flex flex-wrap gap-2 mt-1">
+            {Array.from(new Set(filteredExpenses.map(e => e.category))).slice(0, 4).map(cat => (
               <Badge key={cat} variant="outline" className="text-[8px] font-bold bg-muted/50 border-border text-muted-foreground px-2 py-0.5 rounded-full uppercase">
                 {cat}
               </Badge>
             ))}
+            {Array.from(new Set(filteredExpenses.map(e => e.category))).length === 0 && (
+              <span className="text-xs text-muted-foreground mt-2">Nenhuma registrada</span>
+            )}
+            {Array.from(new Set(filteredExpenses.map(e => e.category))).length > 4 && (
+              <Badge variant="outline" className="text-[8px] font-bold bg-muted/50 border-border text-muted-foreground px-2 py-0.5 rounded-full uppercase">
+                +{Array.from(new Set(filteredExpenses.map(e => e.category))).length - 4} mais
+              </Badge>
+            )}
           </div>
         </Card>
 
@@ -293,7 +301,7 @@ export default function Expenses() {
       </div>
 
       <Card className="border-border bg-card shadow-sm rounded-3xl overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto hidden md:block">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent border-border bg-muted/40">
@@ -376,6 +384,79 @@ export default function Expenses() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Mobile View */}
+        <div className="md:hidden flex flex-col p-4 space-y-4">
+          <AnimatePresence mode="popLayout">
+            {sortedExpenses.map((expense, idx) => (
+              <motion.div
+                layout
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.03 }}
+                key={expense.id}
+              >
+                <Card className="p-4 border border-border/50 bg-card shadow-sm hover:bg-muted/10 transition-colors">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-muted border border-border flex items-center justify-center text-primary shrink-0">
+                        <Receipt className={`w-5 h-5 ${expense.isRecurrent ? 'text-primary' : 'text-muted-foreground'}`} />
+                      </div>
+                      <div className="flex flex-col">
+                        <h3 className="font-bold text-foreground leading-tight mb-0.5 text-sm uppercase line-clamp-2">{expense.description}</h3>
+                        <div className="flex flex-col gap-0.5">
+                          <span className={`text-[9px] tracking-widest uppercase font-bold text-muted-foreground`}>
+                            {expense.category}
+                          </span>
+                          {expense.isRecurrent && (
+                            <span className="text-[8px] text-primary font-bold uppercase tracking-widest">Recorrente Ativa</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex bg-muted/50 rounded-lg shrink-0">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted/10 rounded-xl" onClick={() => handleEdit(expense)}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-xl" onClick={() => handleDelete(expense.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-border/50">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold">Data</span>
+                      <span className="font-bold text-xs">{format(parseISO(expense.date), 'dd/MM/yyyy')}</span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold">Valor</span>
+                      <span className="font-bold text-sm tracking-tight text-destructive">- R$ {expense.amount.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </Card>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          {sortedExpenses.length === 0 && (
+            <div className="text-center py-20 bg-muted/5 rounded-3xl">
+              <div className="flex flex-col items-center gap-4 opacity-20">
+                <Receipt className="w-10 h-10" />
+                <p className="text-xl font-bold uppercase tracking-tight">Sem lançamentos</p>
+              </div>
+            </div>
+          )}
+        </div>
+        <Button 
+          className="md:hidden fixed bottom-[88px] right-4 h-14 w-14 rounded-full shadow-xl z-50 flex items-center justify-center p-0"
+          onClick={() => {
+            setEditingId(null);
+            setFormData({ description: '', amount: '0', category: categories[0], date: format(new Date(), 'yyyy-MM-dd'), isRecurrent: false });
+            setIsOpen(true);
+          }}
+          disabled={!isActive}
+        >
+          <Plus className="w-6 h-6" />
+        </Button>
       </Card>
     </div>
   );

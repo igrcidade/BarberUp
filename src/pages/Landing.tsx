@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { toast } from 'sonner';
 import { 
   Scissors, 
   TrendingUp, 
@@ -26,16 +29,64 @@ export default function Landing() {
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showLeadForm, setShowLeadForm] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [leadName, setLeadName] = useState('');
   const [leadPhone, setLeadPhone] = useState('');
+  const [leadEmail, setLeadEmail] = useState('');
 
-  const handleLeadSubmit = (e: React.FormEvent) => {
+  const handleLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const text = `Olá, meu nome é ${leadName}. Gostaria de conhecer mais sobre o BarberUp. Meu telefone é ${leadPhone}.`;
-    window.open(`https://api.whatsapp.com/send?phone=5522998658373&text=${encodeURIComponent(text)}`, '_blank');
+    try {
+      await addDoc(collection(db, 'leads'), {
+        name: leadName,
+        email: leadEmail,
+        phone: leadPhone,
+        createdAt: new Date().toISOString()
+      });
+      
+      // Enviar e-mail via FormSubmit
+      fetch("https://formsubmit.co/ajax/igrcidade@gmail.com", {
+          method: "POST",
+          headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+              nome: leadName,
+              email: leadEmail,
+              telefone: leadPhone,
+              mensagem: "Nova solicitação de contato recebida através da Landing Page."
+          })
+      }).catch(err => console.error("Erro no envio do email:", err));
+
+    } catch (error) {
+      console.error('Firebase write failed', error);
+      
+      // Tentar enviar e-mail mesmo se o Firebase falhar
+      fetch("https://formsubmit.co/ajax/igrcidade@gmail.com", {
+          method: "POST",
+          headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+              nome: leadName,
+              email: leadEmail,
+              telefone: leadPhone,
+              mensagem: "Nova solicitação de contato originada da Landing Page."
+          })
+      }).catch(err => console.error("Erro", err));
+    }
+    
     setShowLeadForm(false);
     setLeadName('');
     setLeadPhone('');
+    setLeadEmail('');
+    
+    // Pequeno atraso para evitar conflito de fechamento de modais
+    setTimeout(() => {
+      setShowSuccessPopup(true);
+    }, 300);
   };
 
   const containerVariants = {
@@ -57,7 +108,7 @@ export default function Landing() {
       price: '79,90',
       period: '/mês',
       description: 'Ideal para quem está começando agora.',
-      features: ['Gestão de Agendamentos', 'Controle Financeiro', 'PDV Completo', 'Até 2 Profissionais'],
+      features: ['Gestão de Clientes', 'Controle Financeiro', 'PDV Completo', 'Até 2 Profissionais'],
       cta: 'Começar Agora',
       popular: false
     },
@@ -69,7 +120,7 @@ export default function Landing() {
       features: ['Tudo do Mensal', 'Gestão de Estoque', 'Relatórios de Retenção', 'Profissionais Ilimitados', 'Suporte Prioritário'],
       cta: 'Assinar Plano Anual',
       popular: true,
-      billed: 'Cobrado anualmente (R$ 718,80)'
+      billed: 'Valor Total: R$ 718,80'
     },
     {
       name: 'Semestral',
@@ -79,7 +130,7 @@ export default function Landing() {
       features: ['Tudo do Mensal', 'Gestão de Estoque', 'Até 5 Profissionais', 'Suporte via WhatsApp'],
       cta: 'Assinar Plano Semestral',
       popular: false,
-      billed: 'Cobrado semestralmente (R$ 419,40)'
+      billed: 'Valor Total: R$ 419,40'
     }
   ];
 
@@ -104,6 +155,7 @@ export default function Landing() {
           {[
             { label: 'Funcionalidades', href: '#funcionalidades' },
             { label: 'Resultados', href: '#resultados' },
+            { label: 'Sobre Nós', href: '#sobre' },
             { label: 'Planos', href: '#planos' },
             { label: 'Suporte', href: '#suporte' }
           ].map((item) => (
@@ -113,14 +165,14 @@ export default function Landing() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <Link to="/login">
-            <Button variant="ghost" className="hidden sm:flex font-bold text-xs uppercase tracking-widest text-zinc-400 hover:text-white hover:bg-white/5 px-4 h-9 rounded-lg">
+            <Button variant="ghost" className="flex font-bold text-[10px] sm:text-xs uppercase tracking-widest text-zinc-400 hover:text-white hover:bg-white/5 px-3 sm:px-4 h-8 sm:h-9 rounded-lg">
               Entrar
             </Button>
           </Link>
           <Link to="/register">
-            <Button className="bg-[#bef264] hover:bg-[#d9f99d] text-black font-bold text-xs px-6 py-2 rounded-lg shadow-sm hover:scale-[1.02] transition-transform uppercase tracking-widest h-9">
+            <Button className="bg-[#bef264] hover:bg-[#d9f99d] text-black font-bold text-[10px] sm:text-xs px-4 sm:px-6 py-2 rounded-lg shadow-sm hover:scale-[1.02] transition-transform uppercase tracking-widest h-8 sm:h-9">
               Teste Grátis
             </Button>
           </Link>
@@ -141,13 +193,13 @@ export default function Landing() {
             </Badge>
           </motion.div>
           
-          <motion.h1 variants={itemVariants} className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.1] uppercase">
-            Eleve sua Gestão <br />
-            <span className="text-orange-500 bg-clip-text">De Nível</span>
+          <motion.h1 variants={itemVariants} className="text-5xl md:text-7xl font-extrabold tracking-normal leading-[1.1] uppercase">
+            Eleve sua <br/> Gestão <br />
+            <span className="text-orange-500 font-black italic block mt-2">De Nível</span>
           </motion.h1>
 
           <motion.p variants={itemVariants} className="text-lg text-zinc-400 font-medium max-w-lg leading-relaxed">
-            Abandone o improviso. Tenha uma gestão cirúrgica da sua barbearia com tecnologia de ponta. Agende, venda e lucre mais com o sistema feito para o seu negócio.
+            Abandone o improviso. Tenha uma gestão cirúrgica da sua barbearia com tecnologia de ponta. Venda, gerencie e lucre mais com o sistema feito para o seu negócio.
           </motion.p>
 
           <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 pt-4">
@@ -167,13 +219,16 @@ export default function Landing() {
           className="relative group w-full max-w-[400px] md:max-w-md lg:max-w-[460px] mx-auto lg:ml-auto"
         >
           {/* Main Visual Image - High-end Barbershop */}
-          <div className="relative z-10 rounded-3xl overflow-hidden border border-white/10 shadow-2xl h-[450px] md:h-[550px] w-full">
-            <img 
+          <div className="relative z-10 rounded-3xl overflow-hidden border border-white/10 shadow-2xl h-[500px] md:h-[650px] w-full">
+            <motion.img 
+              initial={{ scale: 1 }}
+              whileInView={{ scale: 1.15 }}
+              transition={{ duration: 15, ease: "linear", repeat: Infinity, repeatType: "reverse" }}
               src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=2070&auto=format&fit=crop" 
               alt="Premium Barbershop" 
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-105"
+              className="absolute inset-0 w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
             
             <div className="absolute bottom-8 left-8 right-8 space-y-3">
               <Badge className="bg-lime-400 text-black font-bold uppercase text-[9px] tracking-widest px-2 py-0.5 border-none">Case de Sucesso</Badge>
@@ -203,15 +258,18 @@ export default function Landing() {
       <section id="funcionalidades" className="py-24 px-6 lg:px-8 bg-zinc-900/30 border-b border-white/5">
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
           <div className="order-2 lg:order-1 relative max-w-md mx-auto w-full">
-            <div className="rounded-3xl overflow-hidden border border-white/10 relative shadow-xl group">
-              <img 
+            <div className="rounded-3xl overflow-hidden border border-white/10 relative shadow-xl group aspect-[4/5]">
+              <motion.img 
+                initial={{ scale: 1 }}
+                whileInView={{ scale: 1.2 }}
+                transition={{ duration: 20, ease: "linear", repeat: Infinity, repeatType: "reverse" }}
                 src="https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=1976&auto=format&fit=crop" 
                 alt="Management detail" 
-                className="w-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                className="absolute inset-0 w-full h-full object-cover" 
               />
               <div className="absolute inset-0 bg-black/20" />
             </div>
-            <div className="absolute -bottom-6 -left-6 bg-orange-500 p-5 rounded-2xl shadow-lg">
+            <div className="absolute -bottom-6 -left-6 bg-orange-500 p-5 rounded-2xl shadow-lg z-20">
               <Zap className="w-8 h-8 text-white" />
             </div>
           </div>
@@ -223,7 +281,7 @@ export default function Landing() {
             </p>
             <ul className="space-y-3 pt-2">
               {[
-                'Agendamento Online Integrado',
+                'Gestão de Clientes',
                 'Controle de Estoque e Comissões',
                 'Dashboard Financeiro',
                 'Relatórios de Performance'
@@ -250,17 +308,32 @@ export default function Landing() {
             { 
               name: 'Thiago Oliveira', 
               text: 'A gestão ficou tão leve que tive tempo para abrir minha segunda unidade. O app é essencial.',
-              image: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?q=80&w=1976&auto=format&fit=crop'
+              image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=200&h=200'
             },
             { 
               name: 'Ricardo Mello', 
               text: 'Controlar as comissões dos 5 barbeiros era um pesadelo. Hoje o sistema faz tudo sem margem de erro.',
-              image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=2070&auto=format&fit=crop'
+              image: 'https://images.unsplash.com/photo-1622296089863-eb7fc530daa8?auto=format&fit=crop&w=200&h=200'
             },
             { 
               name: 'Carlos Santos', 
-              text: 'Meus clientes amam o agendamento fácil. A taxa de retorno subiu absurdamente no último mês.',
-              image: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=2070&auto=format&fit=crop'
+              text: 'A gestão financeira ficou muito mais fácil. A minha taxa de retorno subiu absurdamente no último mês.',
+              image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&h=200'
+            },
+            { 
+              name: 'André Ferreira', 
+              text: 'O PDV é muito rápido. Faço vendas de produtos e serviços em segundos. Mudou minha rotina.',
+              image: 'https://images.unsplash.com/photo-1534308143481-c55f00be8bd7?auto=format&fit=crop&w=200&h=200'
+            },
+            { 
+              name: 'Bruno Lima', 
+              text: 'Os relatórios me mostraram que eu estava perdendo dinheiro em estoque. Recuperei o investimento em 15 dias.',
+              image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&h=200'
+            },
+            { 
+              name: 'Fabiano Costa', 
+              text: 'Sistema intuitivo e suporte nota 10. Migrei de outro software e foi a melhor decisão para minha barbearia.',
+              image: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=200&h=200'
             }
           ].map((item, i) => (
             <motion.div 
@@ -272,7 +345,7 @@ export default function Landing() {
               className="bg-zinc-900/50 border border-white/5 p-8 rounded-2xl space-y-5 hover:bg-zinc-900 transition-colors"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full overflow-hidden border border-white/10">
+                <div className="w-12 h-12 rounded-full overflow-hidden border border-white/10 shrink-0">
                   <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                 </div>
                 <div>
@@ -289,12 +362,55 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Nossa História / Sobre Nós Section */}
+      <section id="sobre" className="py-24 px-6 lg:px-8 bg-zinc-900/30 border-b border-white/5">
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
+          <div className="relative group">
+            <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl h-[500px]">
+              <motion.img 
+                initial={{ scale: 1 }}
+                whileInView={{ scale: 1.15 }}
+                transition={{ duration: 15, ease: "linear", repeat: Infinity, repeatType: "reverse" }}
+                src="https://images.unsplash.com/photo-1585747860715-2ba37e788b70?q=80&w=2074&auto=format&fit=crop" 
+                alt="Nossa História" 
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+            </div>
+            {/* Added decorative badge */}
+            <div className="absolute -bottom-6 -right-6 bg-lime-400 text-black font-black p-6 rounded-2xl shadow-xl rotate-3">
+              <Sparkles className="w-8 h-8" />
+            </div>
+          </div>
+          <div className="space-y-8">
+            <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20 font-bold px-3 py-1 text-[10px] uppercase tracking-widest w-fit">
+              Nossa História
+            </Badge>
+            <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tight leading-[1.1]">
+              Determinação em <br />
+              <span className="text-orange-500">Servir Você</span>
+            </h2>
+            <div className="space-y-4 text-zinc-400 font-medium leading-relaxed">
+              <p>
+                O BarberUp nasceu da necessidade de transformar o caos em ordem. Nossa história é marcada pela determinação implacável em buscar as melhores soluções tecnológicas para o mercado da beleza.
+              </p>
+              <p>
+                Acreditamos que o barbeiro moderno merece mais que um simples sistema: merece um ecossistema de crescimento. Oferecemos qualidade premium e preço justo, garantindo que profissionais de elite tenham as ferramentas certas para focar no que realmente importa: a arte de transformar vidas através do visual.
+              </p>
+              <p className="text-white font-bold italic border-l-2 border-lime-400 pl-4">
+                "Nossa missão é democratizar a gestão de alta performance para todas as barbearias do Brasil."
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing Section */}
       <section id="planos" className="py-24 px-6 lg:px-8 border-b border-white/5">
         <div className="max-w-7xl mx-auto">
           <div className="text-center space-y-4 mb-16">
             <Badge className="bg-[#bef264]/10 text-lime-400 border-[#bef264]/20 font-bold px-3 py-1 text-[10px] uppercase tracking-widest">Planos</Badge>
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight uppercase">Gestão de Elite <br /> ao seu <span className="text-orange-500">alcance</span></h2>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-[1.1] uppercase">Gestão de Elite <br /> <span className="text-orange-500 italic">ao seu alcance</span></h2>
             <p className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Escolha o plano ideal para a sua barbearia</p>
           </div>
 
@@ -406,8 +522,8 @@ export default function Landing() {
       {/* Final CTA */}
       <section className="py-24 px-6 lg:px-8 text-center max-w-4xl mx-auto">
         <div className="space-y-8">
-          <h2 className="text-4xl md:text-6xl font-bold tracking-tight uppercase">
-            Transforme sua  <br /> <span className="text-orange-500">Gestão hoje</span>
+          <h2 className="text-4xl md:text-6xl font-black tracking-tighter leading-[0.9] uppercase">
+            Transforme sua  <br /> <span className="text-orange-500 italic block mt-2">Gestão hoje</span>
           </h2>
           <p className="text-sm text-zinc-400 font-bold uppercase tracking-widest">Inicie seu teste de 7 dias grátis.</p>
           <Link to="/register" className="inline-block mt-4">
@@ -518,40 +634,73 @@ export default function Landing() {
       <Dialog open={showLeadForm} onOpenChange={setShowLeadForm}>
         <DialogContent className="max-w-md bg-[#0a0a0a] border-white/10 text-white shadow-2xl rounded-3xl">
           <DialogHeader className="border-b border-white/10 pb-6 mb-6">
-            <DialogTitle className="text-2xl font-bold uppercase tracking-tight text-white mb-2">Fale com Especialista</DialogTitle>
-            <DialogDescription className="text-zinc-400 text-xs font-bold uppercase tracking-widest">
-              Nossa equipe entrará em contato com você pelo WhatsApp.
+            <DialogTitle className="text-2xl font-black uppercase tracking-tight text-white mb-2">Solicitar Contato</DialogTitle>
+            <DialogDescription className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest leading-relaxed">
+              Preencha os dados abaixo e entraremos em contato o mais breve possível.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleLeadSubmit} className="space-y-4">
+          <form onSubmit={handleLeadSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ml-1">Seu Nome</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ml-1">Nome Completo</Label>
               <Input
                 type="text"
-                placeholder="Ex: João Silva"
+                autoComplete="name"
+                placeholder="Ex: João Silva de Souza"
                 value={leadName}
                 onChange={(e) => setLeadName(e.target.value)}
                 required
-                className="bg-white/5 border-white/10 rounded-xl h-12 text-white font-bold placeholder:text-zinc-700 focus:border-[#25D366] transition-all"
+                className="bg-white/5 border-white/10 rounded-xl h-12 text-white font-bold placeholder:text-zinc-700 focus:border-orange-500 transition-all shadow-inner"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ml-1">Seu WhatsApp</Label>
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ml-1">E-mail</Label>
+              <Input
+                type="email"
+                autoComplete="email"
+                placeholder="Ex: joao@seuemail.com"
+                value={leadEmail}
+                onChange={(e) => setLeadEmail(e.target.value)}
+                required
+                className="bg-white/5 border-white/10 rounded-xl h-12 text-white font-bold placeholder:text-zinc-700 focus:border-orange-500 transition-all shadow-inner"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ml-1">Seu Telefone/WhatsApp</Label>
               <Input
                 type="tel"
+                autoComplete="tel"
                 placeholder="(22) 99999-9999"
                 value={leadPhone}
                 onChange={(e) => setLeadPhone(e.target.value)}
                 required
-                className="bg-white/5 border-white/10 rounded-xl h-12 text-white font-bold placeholder:text-zinc-700 focus:border-[#25D366] transition-all"
+                className="bg-white/5 border-white/10 rounded-xl h-12 text-white font-bold placeholder:text-zinc-700 focus:border-orange-500 transition-all shadow-inner"
               />
             </div>
             <div className="pt-4">
-              <Button type="submit" className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-xs uppercase tracking-widest rounded-xl h-12">
-                Enviar Mensagem
+              <Button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-black font-black text-xs uppercase tracking-[0.2em] rounded-xl h-14 shadow-lg shadow-orange-500/10">
+                Enviar Solicitação
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Popup */}
+      <Dialog open={showSuccessPopup} onOpenChange={setShowSuccessPopup}>
+        <DialogContent showCloseButton={false} className="max-w-sm bg-[#0a0a0a] border-white/10 text-white shadow-2xl rounded-3xl text-center flex flex-col items-center">
+          <div className="w-16 h-16 bg-lime-500/10 rounded-full flex items-center justify-center mb-4 mt-4">
+            <CheckCircle2 className="w-8 h-8 text-lime-500" />
+          </div>
+          <DialogTitle className="text-2xl font-black uppercase tracking-tight text-white mb-2">Mensagem Enviada!</DialogTitle>
+          <DialogDescription className="text-zinc-400 text-xs font-bold uppercase tracking-widest mb-6 px-4">
+            Em breve nossa equipe entrará em contato com você.
+          </DialogDescription>
+          <Button 
+            onClick={() => setShowSuccessPopup(false)} 
+            className="w-full bg-orange-500 hover:bg-orange-600 text-black font-black text-xs uppercase tracking-[0.2em] rounded-xl h-12 mb-2"
+          >
+            OK
+          </Button>
         </DialogContent>
       </Dialog>
     </div>

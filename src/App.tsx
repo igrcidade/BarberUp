@@ -7,6 +7,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/auth';
 import { ThemeProvider } from './components/ThemeProvider';
+import { Toaster } from 'sonner';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -22,6 +23,7 @@ import CheckoutPlan from './pages/CheckoutPlan';
 import CheckoutSuccess from './pages/CheckoutSuccess';
 import Subscription from './pages/Subscription';
 import Account from './pages/Account';
+import Barbers from './pages/Barbers';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -35,6 +37,7 @@ export default function App() {
     <ThemeProvider defaultTheme="dark" storageKey="barberup-theme">
       <AuthProvider>
         <Router>
+          <Toaster position="top-right" richColors theme="dark" />
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
@@ -56,6 +59,7 @@ export default function App() {
                       <Route path="/retention" element={<Retention />} />
                       <Route path="/subscription" element={<Subscription />} />
                       <Route path="/account" element={<Account />} />
+                      <Route path="/barbers" element={<Barbers />} />
                       <Route path="/master-admin" element={<MasterAdmin />} />
                       <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
                     </Routes>

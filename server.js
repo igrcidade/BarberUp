@@ -19,41 +19,46 @@ async function startServer() {
   // For production APIs, this should be valid.
   const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
 
-  // Mercado Pago Create Preference API
-  app.post("/api/create-preference", async (req, res) => {
+  // Mercado Pago Create Preference API (Pagamento Único)
+  app.post("/api/create-checkout", async (req, res) => {
     try {
-      if (!token) {
-        throw new Error("MERCADOPAGO_ACCESS_TOKEN is not defined in environment variables");
+      const rawToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+      if (!rawToken) {
+        return res.status(500).json({ error: "Configuração ausente", message: "O Access Token não foi configurado no servidor." });
       }
 
-      const { title, price, quantity, planId, userId } = req.body;
+      const token = rawToken.trim().replace(/\s/g, '');
+      const { title, price, userId, email, planType } = req.body;
+      const appUrl = "https://tan-loris-476860.hostingersite.com";
+
+      console.log(`📡 Criando Checkout para: ${title} (R$ ${price}) - Usuário: ${email}`);
 
       const body = {
         items: [
           {
-            id: planId || "plan-id",
+            id: planType,
             title: title,
-            quantity: quantity || 1,
+            quantity: 1,
             unit_price: Number(price),
             currency_id: "BRL"
           }
         ],
         payer: {
-          email: userId ? `${userId}@test.com` : "customer@test.com"
+          email: email.trim().toLowerCase()
         },
+        external_reference: userId,
         metadata: {
           user_id: userId,
-          plan_id: planId
+          plan_type: planType
         },
         back_urls: {
-          success: `${process.env.APP_URL || "https://tan-loris-476860.hostingersite.com"}/checkout/success`,
-          failure: `${process.env.APP_URL || "https://tan-loris-476860.hostingersite.com"}/checkout/failure`,
-          pending: `${process.env.APP_URL || "https://tan-loris-476860.hostingersite.com"}/checkout/pending`
+          success: `${appUrl}/checkout/success`,
+          failure: `${appUrl}/app/subscription`,
+          pending: `${appUrl}/checkout/pending`
         },
         auto_return: "approved",
+        statement_descriptor: "BARBERUP"
       };
-
-      console.log("🛠️ TESTE: Criando Preferência de Pagamento (Checkout Pro):", JSON.stringify(body, null, 2));
 
       const response = await fetch("https://api.mercadopago.com/checkout/preferences", {
         method: "POST",
@@ -68,148 +73,22 @@ async function startServer() {
       
       if (!response.ok) {
         console.error("❌ ERRO MERCADO PAGO:", JSON.stringify(data, null, 2));
-        
-        // Erro comum de misturar conta real com token de teste
-        if (data.message && (data.message.includes("test") || data.error === "bad_request")) {
-           return res.status(400).json({ 
-              error: "MP_TEST_MODE_ERROR",
-              message: "ERRO DE AMBIENTE: Você está tentando pagar com uma conta REAL em um ambiente de TESTE (ou vice-versa).\n\nSOLUÇÃO:\n1. Use o e-mail do 'Comprador de Teste' que o Mercado Pago te deu.\n2. Se o MP pedir para validar o e-mail, você deve estar logado no navegador com essa conta de teste ficitícia.",
-              details: data.message
-           });
-        }
-        
-        return res.status(response.status).json({ error: "Erro ao criar preferência de pagamento", details: data });
+        return res.status(response.status).json({ 
+          error: "Erro no Checkout", 
+          message: data.message || "Não foi possível gerar o link de pagamento.",
+          details: data
+        });
       }
 
-      res.json({ id: data.id, init_point: data.init_point });
+      console.log("✅ Checkout Pro gerado com sucesso.");
+      res.json({ init_point: data.init_point, id: data.id });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: error.message || "Erro interno no servidor" });
-    }
-  });
-
-  // Mercado Pago Create Subscription API
-  app.post("/api/create-subscription", async (req, res) => {
-    try {
-      const rawToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
-      if (!rawToken) {
-        console.error("❌ ERRO: MERCADOPAGO_ACCESS_TOKEN não encontrado nas variáveis de ambiente.");
-        return res.status(500).json({ error: "Configuração ausente", message: "O Token do Mercado Pago não foi configurado na Hostinger." });
-      }
-
-      // Limpa espaços em branco que podem vir do copiar/colar (causa erro de invalid token)
-      const token = rawToken.trim();
-      console.log(`📡 Iniciando Assinatura - Token detectado (primeiros caracteres): ${token.substring(0, 15)}...`);
-
-      const { userId, email } = req.body;
-      const appUrl = process.env.APP_URL || (req.headers.origin) || "https://tan-loris-476860.hostingersite.com";
-
-      // Verifica se há um Plan ID configurado
-      let planId = process.env.MERCADOPAGO_PREAPPROVAL_PLAN_ID;
-      if (planId && (planId.startsWith("APP_USR") || planId.startsWith("TEST-"))) {
-        console.warn("⚠️ AVISO: MERCADOPAGO_PREAPPROVAL_PLAN_ID parece conter um Token em vez de um ID de Plano. Ignorando...");
-        planId = null;
-      }
-
-      // Corpo da Assinatura (Formato Oficial Mercado Pago v1/preapproval)
-      const body = {
-        payer_email: email.trim().toLowerCase(),
-        back_url: `${appUrl}/checkout/success`,
-        reason: "Assinatura Mensal BarberUp",
-        external_reference: userId,
-        auto_recurring: {
-          frequency: 1,
-          frequency_type: "months",
-          transaction_amount: 79.90,
-          currency_id: "BRL"
-        },
-        status: "pending"
-      };
-
-      // Se existir plano, ele vira o template
-      if (planId && planId.trim() !== "") {
-        body.preapproval_plan_id = planId.trim();
-      }
-
-      const response = await fetch("https://api.mercadopago.com/preapproval", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(body)
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.init_point) {
-        console.log("✅ Checkout de Assinatura gerado com sucesso.");
-        return res.json({ init_point: data.init_point });
-      }
-
-      // Tratamento de Erros da API
-      console.error("❌ O Mercado Pago rejeitou os dados:", JSON.stringify(data, null, 2));
-      
-      let message = data.message || "Erro desconhecido na API do Mercado Pago.";
-      if (data.status === 401 || message.includes("access_token")) {
-        message = "O Token inserido na Hostinger é INVÁLIDO ou expirou. Por favor, gere um novo Access Token em 'Suas Integrações' no Mercado Pago.";
-      }
-
-      return res.status(response.status).json({ 
-        error: "Erro na API de Assinaturas", 
-        message: message,
-        raw_error: data
-      });
-
-    } catch (error) {
-      console.error("💥 Falha Crítica:", error);
+      console.error("💥 Falha no Checkout:", error);
       res.status(500).json({ error: "Erro Interno", message: "Erro ao processar pagamento no servidor." });
     }
   });
 
-  // Auxiliar para criar o plano caso o usuário não tenha
-  app.post("/api/setup-subscription-plan", async (req, res) => {
-    try {
-      if (!token) throw new Error("MERCADOPAGO_ACCESS_TOKEN não configurado.");
-      
-      const appUrl = process.env.APP_URL || (req.headers.origin) || "https://tan-loris-476860.hostingersite.com";
-
-      const body = {
-        reason: "Assinatura BarberUp - Plano Mensal",
-        auto_recurring: {
-          frequency: 1,
-          frequency_type: "months",
-          transaction_amount: 79.90,
-          currency_id: "BRL"
-        },
-        back_url: `${appUrl}/checkout/success`,
-        status: "active"
-      };
-
-      const resp = await fetch("https://api.mercadopago.com/preapproval_plan", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(body)
-      });
-
-      const data = await resp.json();
-      
-      if (!resp.ok) {
-        return res.status(resp.status).json({ error: "Erro ao criar plano", details: data });
-      }
-
-      res.json({ 
-        message: "Plano criado com sucesso para testes!", 
-        plan_id: data.id,
-        instruction: "COPIE ESTE ID E COLOQUE NA VARIÁVEL MERCADOPAGO_PREAPPROVAL_PLAN_ID NA HOSTINGER"
-      });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+  // Removido endpoints de assinatura antigos para manter o código limpo e funcional
 
   // WEBHOOK: Recebe notificações automáticas do Mercado Pago
   app.post("/api/webhook", express.json(), async (req, res) => {

@@ -17,86 +17,43 @@ export default function CheckoutPlan() {
   const [loading, setLoading] = useState(false);
 
   const planDetails = {
-    mensal: { name: 'Mensal', price: '79,90', period: 'mês', isSubscription: true },
-    semestral: { name: 'Semestral', price: '419,40', period: 'semestre', isSubscription: false },
-    anual: { name: 'Anual', price: '718,80', period: 'ano', isSubscription: false }
+    mensal: { name: 'Mensal', price: '79,90', period: 'mês', displayPrice: '79,90', totalText: '', planType: 'mensal' },
+    semestral: { name: 'Semestral', price: '419,10', period: 'mês', displayPrice: '69,85', totalText: 'Total R$ 419,10 / semestre', planType: 'semestral' },
+    anual: { name: 'Anual', price: '718,80', period: 'mês', displayPrice: '59,90', totalText: 'Total R$ 718,80 / ano', planType: 'anual' }
   };
 
   const selectedPlan = planDetails[planParam as keyof typeof planDetails] || planDetails.mensal;
 
   const handlePayment = async () => {
-    if (!user) return;
+    if (!user || !user.email) return;
     setLoading(true);
 
     try {
-      let endpoint = '';
-      let payload: any = {};
-
-      if (selectedPlan.isSubscription) {
-        endpoint = '/api/create-subscription';
-        payload = {
-            userId: user.uid,
-            email: user.email
-        };
-
-        console.log('Tentando criar Assinatura...');
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        const data = await response.json();
-        
-        if (response.ok && data.init_point) {
-          window.location.href = data.init_point;
-          return;
-        }
-        
-        throw data;
-      } else {
-        // Checkout para Semestral/Anual (Preferência)
-        endpoint = '/api/create-preference';
-        payload = {
-          planId: planParam,
-          title: `Plano BarberUp - ${selectedPlan.name}`,
+      console.log('Iniciando Checkout Pro para:', selectedPlan.name);
+      
+      const response = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.uid,
+          email: user.email,
+          title: `BarberUp - Plano ${selectedPlan.name}`,
           price: selectedPlan.price.replace(',', '.'),
-          quantity: 1,
-          userId: user.uid
-        };
+          planType: selectedPlan.planType
+        })
+      });
 
-        const respPref = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        const dataPref = await respPref.json();
-        
-        if (!respPref.ok) {
-          throw dataPref;
-        }
-
-        if (dataPref.init_point) {
-          window.location.href = dataPref.init_point;
-        } else {
-          throw new Error('Link de pagamento não retornado');
-        }
+      const data = await response.json();
+      
+      if (response.ok && data.init_point) {
+        window.location.href = data.init_point;
+        return;
       }
+      
+      throw data;
     } catch (e: any) {
       console.error('Payment Error:', e);
-      
-      let errorMessage = e.error || e.message || 'Erro ao processar pagamento';
-      
-      if (e.details) {
-        // Se detalhes for um objeto (erro do MP), extrai a mensagem ou causa
-        const details = typeof e.details === 'object' 
-          ? (e.details.message || (e.details.cause && e.details.cause[0]?.description) || JSON.stringify(e.details))
-          : e.details;
-        errorMessage += `\n\nDetalhes: ${details}`;
-      }
-      
-      alert(errorMessage);
+      alert(e.message || 'Erro ao processar pagamento. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -107,8 +64,8 @@ export default function CheckoutPlan() {
       <div className="w-full max-w-xl space-y-6">
         
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold uppercase tracking-tight">Finalizar Assinatura</h1>
-          <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest text-[#009EE3]">Integração Mercado Pago</p>
+          <h1 className="text-3xl font-bold uppercase tracking-tight">Finalizar Pagamento</h1>
+          <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest text-[#009EE3]">Acesso BarberUp</p>
         </div>
 
         <Card className="bg-card border-border shadow-xl">
@@ -116,19 +73,23 @@ export default function CheckoutPlan() {
             <div className="bg-muted p-4 rounded-xl flex justify-between items-center">
               <div>
                 <h3 className="font-bold text-sm uppercase tracking-tight text-white">Plano {selectedPlan.name}</h3>
-                <p className="text-xs text-muted-foreground mt-1">Acesso completo ao BarberUp</p>
+                <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">{selectedPlan.totalText || 'Acesso mensal completo'}</p>
               </div>
               <div className="text-right">
-                <span className="text-2xl font-bold">R$ {selectedPlan.price}</span><span className="text-xs text-muted-foreground uppercase tracking-widest">/{selectedPlan.period}</span>
+                <div className="flex items-baseline justify-end gap-1">
+                   <span className="text-xs text-muted-foreground font-bold">R$</span>
+                   <span className="text-3xl font-black text-white">{selectedPlan.displayPrice}</span>
+                   <span className="text-[10px] text-muted-foreground font-bold uppercase">/{selectedPlan.period}</span>
+                </div>
               </div>
             </div>
 
             <div className="space-y-4">
               <div className="flex items-center gap-3 text-sm text-zinc-300 font-medium">
-                <CheckCircle2 className="w-4 h-4 text-[#009EE3]" /> Pagamento 100% seguro pelo Mercado Pago
+                <CheckCircle2 className="w-4 h-4 text-[#009EE3]" /> Pagamento Único via Pix ou Cartão
               </div>
               <div className="flex items-center gap-3 text-sm text-zinc-300 font-medium">
-                <CheckCircle2 className="w-4 h-4 text-[#009EE3]" /> Renovação automática e transparente
+                <CheckCircle2 className="w-4 h-4 text-[#009EE3]" /> Sem cobranças automáticas futuras
               </div>
               <div className="flex items-center gap-3 text-sm text-zinc-300 font-medium">
                 <CheckCircle2 className="w-4 h-4 text-[#009EE3]" /> Liberação imediata após aprovação

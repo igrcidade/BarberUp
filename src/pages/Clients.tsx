@@ -79,11 +79,6 @@ export default function Clients() {
     }
   };
 
-  const filteredClients = clients.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.phone?.includes(searchTerm)
-  );
-
   const getClientStats = (clientId: string) => {
     const clientSales = sales.filter(s => s.clientId === clientId);
     const totalSpent = clientSales.reduce((acc, curr) => acc + (curr.total || 0), 0);
@@ -95,16 +90,40 @@ export default function Clients() {
     
     let status = 'Inativo';
     let lastDateStr = 'Nunca';
+    let lastDateObj: Date | null = null;
     
     if (lastSale) {
       const lastDate = lastSale.createdAt?.toDate ? lastSale.createdAt.toDate() : parseISO(lastSale.createdAt);
       const dayDiff = differenceInDays(new Date(), lastDate);
       status = dayDiff <= 45 ? 'Ativo' : 'Inativo';
       lastDateStr = format(lastDate, 'dd/MM/yyyy');
+      lastDateObj = lastDate;
     }
 
-    return { totalSpent, visitCount: clientSales.length, status, lastDateStr };
+    return { totalSpent, visitCount: clientSales.length, status, lastDateStr, lastDateObj };
   };
+
+  const enrichedClients = clients.map(c => ({
+    ...c,
+    stats: getClientStats(c.id)
+  }));
+
+  const filteredClients = enrichedClients.filter(c => 
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    c.phone?.includes(searchTerm)
+  ).sort((a, b) => {
+    if (!a.stats.lastDateObj && !b.stats.lastDateObj) {
+      if (!a.createdAt && !b.createdAt) return 0;
+      if (!a.createdAt) return 1;
+      if (!b.createdAt) return -1;
+      const dateA = a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+      const dateB = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+      return dateB.getTime() - dateA.getTime();
+    }
+    if (!a.stats.lastDateObj) return 1;
+    if (!b.stats.lastDateObj) return -1;
+    return b.stats.lastDateObj.getTime() - a.stats.lastDateObj.getTime();
+  });
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
@@ -124,7 +143,7 @@ export default function Clients() {
             setFormData({ name: '', phone: '', notes: '' });
           }
         }}>
-          <DialogTrigger render={<Button disabled={!isActive} className="barber-button-primary h-12 px-8 shadow-md" />}>
+          <DialogTrigger render={<Button disabled={!isActive} className="hidden md:flex barber-button-primary h-12 px-8 shadow-md" />}>
             <UserPlus className="w-5 h-5 mr-1" /> NOVO CLIENTE
           </DialogTrigger>
           <DialogContent className="bg-card border-border rounded-3xl p-0 overflow-hidden shadow-2xl">
@@ -204,7 +223,7 @@ export default function Clients() {
 
       {/* Tabela de Clientes */}
       <Card className="border-border bg-card shadow-sm rounded-3xl overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto hidden md:block">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent border-border bg-muted/40">
@@ -219,7 +238,7 @@ export default function Clients() {
             <TableBody>
               <AnimatePresence mode="popLayout">
                 {filteredClients.map((client, i) => {
-                  const stats = getClientStats(client.id);
+                  const stats = client.stats;
                   return (
                     <motion.tr 
                       layout
@@ -296,6 +315,74 @@ export default function Clients() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Mobile View */}
+        <div className="md:hidden flex flex-col p-4 space-y-4">
+          <AnimatePresence mode="popLayout">
+            {filteredClients.map((client, i) => {
+              const stats = client.stats;
+              return (
+                <motion.div
+                  layout
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                  key={client.id}
+                >
+                  <Card className="p-4 border border-border/50 bg-card shadow-sm hover:bg-muted/10 transition-colors">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-lg uppercase shrink-0">
+                          {client.name.charAt(0)}
+                        </div>
+                        <div className="flex flex-col">
+                          <h3 className="font-bold text-foreground leading-none mb-1 text-sm uppercase">{client.name}</h3>
+                          <span className={`text-[9px] tracking-widest uppercase font-bold ${stats.status === 'Ativo' ? 'text-primary' : 'text-muted-foreground'}`}>
+                            {stats.status}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex bg-muted/50 rounded-lg">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10 rounded-xl" onClick={() => setViewingClient(client)}>
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted/10 rounded-xl" onClick={() => handleEdit(client)}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-xl" onClick={() => handleDelete(client.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-border/50">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold">Última Visita</span>
+                        <span className="font-bold text-xs">{stats.lastDateStr}</span>
+                      </div>
+                      <div className="flex justify-between items-end">
+                        <div className="flex flex-col">
+                          <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold">Visitas</span>
+                          <span className="font-bold text-xs">{stats.visitCount} x</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+        <Button 
+          className="md:hidden fixed bottom-[88px] right-4 h-14 w-14 rounded-full shadow-xl z-50 flex items-center justify-center p-0"
+          onClick={() => {
+            setEditingClient(null);
+            setFormData({ name: '', phone: '', email: '', birthDate: '', notes: '' });
+            setIsAddOpen(true);
+          }}
+          disabled={!isActive}
+        >
+          <Plus className="w-6 h-6" />
+        </Button>
       </Card>
 
       {/* Modal Histórico */}

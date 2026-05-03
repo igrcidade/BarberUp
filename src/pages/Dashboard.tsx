@@ -17,9 +17,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useTheme } from '../components/ThemeProvider';
 import { subscribeToCollection, addDocument } from '../lib/db';
-import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, differenceInDays, addDays, subDays, startOfYear, endOfYear, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, differenceInDays, addDays, subDays, startOfYear, endOfYear, subMonths, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
   XAxis, 
@@ -48,10 +49,13 @@ export default function Dashboard() {
   const [clients, setClients] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [barbers, setBarbers] = useState<any[]>([]);
   
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
   const [filterType, setFilterType] = useState<string>('month');
+  const [isCommissionsModalOpen, setIsCommissionsModalOpen] = useState(false);
+  const [isFaturamentoModalOpen, setIsFaturamentoModalOpen] = useState(false);
 
   useEffect(() => {
     const unsubSales = subscribeToCollection('sales', setSales);
@@ -59,6 +63,7 @@ export default function Dashboard() {
     const unsubClients = subscribeToCollection('clients', setClients);
     const unsubServices = subscribeToCollection('services', setServices);
     const unsubProducts = subscribeToCollection('products', setProducts);
+    const unsubBarbers = subscribeToCollection('barbers', setBarbers);
 
     return () => {
       unsubSales();
@@ -66,11 +71,17 @@ export default function Dashboard() {
       unsubClients();
       unsubServices();
       unsubProducts();
+      unsubBarbers();
     };
   }, []);
 
-  const monthStart = parseISO(startDate);
-  const monthEnd = parseISO(endDate);
+  const parseLocalDate = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  const monthStart = startOfDay(parseLocalDate(startDate));
+  const monthEnd = endOfDay(parseLocalDate(endDate));
 
   const currentPeriodSales = sales.filter(s => {
     const sDate = s.createdAt;
@@ -88,7 +99,9 @@ export default function Dashboard() {
 
   const totalSales = currentPeriodSales.reduce((acc, curr) => acc + (curr.total || 0), 0);
   const totalExpenses = currentPeriodExpenses.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-  const profit = totalSales - totalExpenses;
+  const totalCommissions = currentPeriodSales.reduce((acc, curr) => acc + (curr.commissionTotal || 0), 0);
+  
+  const profit = totalSales - totalExpenses - totalCommissions;
   const clientCount = currentPeriodSales.reduce((acc, curr) => {
     if (curr.clientId) acc.add(curr.clientId);
     return acc;
@@ -96,10 +109,26 @@ export default function Dashboard() {
 
   const ticketMedio = currentPeriodSales.length > 0 ? totalSales / currentPeriodSales.length : 0;
 
+  const salesByPaymentMethod = currentPeriodSales.reduce((acc, curr) => {
+    const method = curr.paymentMethod || 'Dinheiro';
+    if (!acc[method]) acc[method] = { total: 0, count: 0 };
+    acc[method].total += (curr.total || 0);
+    acc[method].count += 1;
+    return acc;
+  }, {} as Record<string, {total: number, count: number}>);
+
   const { theme } = useTheme();
 
   // Rankings
   const salesItems = currentPeriodSales.flatMap(s => s.items || []);
+  
+  const barberRanking = barbers.map(barber => {
+    const barberSales = currentPeriodSales.filter(s => s.barberId === barber.id);
+    const revenue = barberSales.reduce((acc, curr) => acc + (curr.total || 0), 0);
+    const commission = barberSales.reduce((acc, curr) => acc + (curr.commissionTotal || 0), 0);
+    const count = barberSales.length;
+    return { ...barber, count, revenue, commission };
+  }).sort((a, b) => b.revenue - a.revenue).filter(b => b.revenue > 0);
   
   const serviceRanking = services.map(service => {
     const items = salesItems.filter(item => item.type === 'service' && (item.id === service.id || item.name === service.name));
@@ -192,8 +221,9 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center gap-1.5 bg-muted/50 p-1 rounded-xl border border-border">
+        <div className="flex flex-col gap-4 w-full lg:w-auto max-w-full">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-1.5 bg-muted/50 p-2 sm:p-1 rounded-xl border border-border overflow-hidden">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 w-full sm:w-auto">
             {[
               { id: 'today', label: 'Hoje' },
               { id: 'week', label: '7 Dias' },
@@ -205,13 +235,14 @@ export default function Dashboard() {
                 key={f.id}
                 variant={filterType === f.id ? 'secondary' : 'ghost'} 
                 size="sm" 
-                className={`h-8 px-4 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all`}
+                className={`flex-[1_1_auto] sm:flex-none hover:bg-muted/80 shrink-0 h-8 px-2 sm:px-4 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all`}
                 onClick={() => setFilter(f.id)}
               >
                 {f.label}
               </Button>
             ))}
-            <div className="flex items-center gap-2 px-2 border-l border-border ml-2">
+            </div>
+            <div className="flex items-center justify-between sm:justify-start gap-2 sm:px-2 pt-2 sm:pt-0 border-t sm:border-t-0 sm:border-l border-border mt-1 sm:mt-0 sm:ml-2 shrink-0">
               <Input 
                 type="date"
                 value={startDate}
@@ -219,9 +250,9 @@ export default function Dashboard() {
                   setStartDate(e.target.value);
                   setFilterType('custom');
                 }}
-                className="h-8 text-[10px] uppercase font-bold w-auto bg-card rounded-md border-border"
+                className="h-8 text-[10px] uppercase font-bold w-[120px] sm:w-auto bg-card rounded-md border-border"
               />
-              <span className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Até</span>
+              <span className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest px-1">Até</span>
               <Input 
                 type="date"
                 value={endDate}
@@ -229,7 +260,7 @@ export default function Dashboard() {
                   setEndDate(e.target.value);
                   setFilterType('custom');
                 }}
-                className="h-8 text-[10px] uppercase font-bold w-auto bg-card rounded-md border-border"
+                className="h-8 text-[10px] uppercase font-bold w-[120px] sm:w-auto bg-card rounded-md border-border"
               />
             </div>
           </div>
@@ -237,40 +268,129 @@ export default function Dashboard() {
       </div>
 
       {/* KPI Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-6">
         {[
-          { title: 'Faturamento', value: totalSales, color: 'text-primary', icon: TrendingUp, detail: `${currentPeriodSales.length} vendas` },
+          { title: 'Faturamento', value: totalSales, color: 'text-primary', icon: TrendingUp, detail: `${currentPeriodSales.length} vendas`, isClickable: true, onClick: () => setIsFaturamentoModalOpen(true) },
           { title: 'Despesas', value: totalExpenses, color: 'text-rose-500', icon: TrendingDown, detail: `${currentPeriodExpenses.length} lançamentos` },
+          { title: 'Comissões', value: totalCommissions, color: 'text-purple-500', icon: TrendingDown, detail: `${barberRanking.filter(b => b.commission > 0).length} barbeiros`, isClickable: true, onClick: () => setIsCommissionsModalOpen(true) },
           { title: 'Lucro Real', value: profit, color: 'text-emerald-500', icon: DollarSign, detail: `Margem: ${totalSales > 0 ? ((profit / totalSales) * 100).toFixed(1) : 0}%` },
-          { title: 'Ticket Médio', value: ticketMedio, color: 'text-orange-500', icon: UserCheck, detail: `${clientCount} clientes` },
+          { title: 'Ticket Méd.', value: ticketMedio, color: 'text-orange-500', icon: UserCheck, detail: `${clientCount} clientes` },
         ].map((kpi, i) => (
           <motion.div
             key={kpi.title}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
+            className={i === 4 ? "col-span-2 md:col-span-1" : ""}
           >
-            <Card className="border-border bg-card shadow-sm rounded-2xl p-6 group transition-all hover:border-primary/20">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{kpi.title}</span>
-                <div className={`p-2 rounded-lg bg-muted ${kpi.color}`}>
-                  <kpi.icon className="h-4 w-4" />
+            <Card 
+              className={`border-border bg-card shadow-sm rounded-2xl p-4 sm:p-6 group transition-all hover:border-primary/20 ${kpi.isClickable ? 'cursor-pointer hover:shadow-md' : ''}`}
+              onClick={kpi.onClick}
+            >
+              <div className="flex items-center justify-between mb-2 sm:mb-4">
+                <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-muted-foreground line-clamp-1">{kpi.title}</span>
+                <div className={`p-1.5 sm:p-2 rounded-lg bg-muted ${kpi.color}`}>
+                  <kpi.icon className="h-3 w-3 sm:h-4 sm:w-4" />
                 </div>
               </div>
-              <div className="text-2xl font-bold tracking-tight text-foreground">
-                <span className="text-xs mr-1 opacity-40 font-medium lowercase">r$</span>
-                {kpi.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              <div className="text-lg sm:text-2xl font-bold tracking-tight text-foreground flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] sm:text-xs mr-0.5 sm:mr-1 opacity-40 font-medium lowercase">r$</span>
+                  {kpi.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
               </div>
-              <p className="text-[10px] text-muted-foreground font-medium mt-2 uppercase tracking-wide">{kpi.detail}</p>
+              <div className="flex justify-between items-center mt-2">
+                <p className="text-[8px] sm:text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{kpi.detail}</p>
+                {kpi.isClickable && <div className="text-[8px] sm:text-[9px] text-purple-500 bg-purple-500/10 px-1.5 py-0.5 rounded font-bold tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">VER</div>}
+              </div>
             </Card>
           </motion.div>
         ))}
       </div>
 
+      <Dialog open={isFaturamentoModalOpen} onOpenChange={setIsFaturamentoModalOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-card border-border shadow-xl rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold uppercase tracking-tight text-foreground flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              Faturamento por Método
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="flex justify-between items-end border-b border-border/50 pb-4">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Total no Período</span>
+              <span className="text-2xl font-black text-primary uppercase tracking-tighter">
+                R$ {totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+            
+            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
+              {Object.entries(salesByPaymentMethod)
+                .sort((a, b) => (b[1] as any).total - (a[1] as any).total)
+                .map(([method, data]: [string, any]) => (
+                <div key={method} className="flex justify-between items-center p-4 bg-muted/40 rounded-xl border border-border border-dashed">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-foreground text-sm uppercase tracking-tight">{method}</span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{data.count} vendas</span>
+                  </div>
+                  <span className="text-sm font-black text-foreground">
+                    R$ {data.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              ))}
+              
+              {Object.keys(salesByPaymentMethod).length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">Nenhum faturamento registrado.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCommissionsModalOpen} onOpenChange={setIsCommissionsModalOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-card border-border shadow-xl rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold uppercase tracking-tight text-foreground flex items-center gap-2">
+              <TrendingDown className="w-5 h-5 text-purple-500" />
+              Relatório de Comissões
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="flex justify-between items-end border-b border-border/50 pb-4">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Total no Período</span>
+              <span className="text-2xl font-black text-purple-500 tracking-tight">
+                <span className="text-sm mr-1 opacity-40 font-medium lowercase">r$</span>
+                {totalCommissions.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+              {barberRanking.filter(b => b.commission > 0).map(b => (
+                <div key={b.id} className="flex justify-between items-center bg-muted/20 p-3 rounded-xl border border-border/50">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-sm uppercase text-foreground">{b.name}</span>
+                    <span className="text-[10px] text-muted-foreground font-bold tracking-widest">{b.count} atendimentos</span>
+                  </div>
+                  <span className="font-black text-purple-500">
+                    R$ {b.commission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              ))}
+              {barberRanking.filter(b => b.commission > 0).length === 0 && (
+                <div className="text-center py-6">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Nenhuma comissão no período</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="grid grid-cols-1 lg:grid-cols-7 gap-6">
         {/* Main Chart */}
-        <Card className="lg:col-span-5 border-border bg-card shadow-sm rounded-3xl overflow-hidden p-8">
-          <div className="flex items-center justify-between mb-8">
+        <Card className="lg:col-span-5 border-border bg-card shadow-sm rounded-3xl overflow-hidden p-4 sm:p-8 min-w-0">
+          <div className="flex items-center justify-between mb-4 sm:mb-8">
             <div>
               <CardTitle className="text-lg font-bold tracking-tight text-foreground uppercase">Desempenho de Vendas</CardTitle>
               <CardDescription className="text-xs">Faturamento acumulado por período</CardDescription>
@@ -361,10 +481,48 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Barbers Ranking */}
+        <Card className="border-border bg-card shadow-sm rounded-3xl p-4 sm:p-8 min-w-0">
+          <div className="flex items-center gap-3 mb-6 sm:mb-8">
+            <div className="p-2.5 bg-blue-500/10 rounded-xl">
+              <UserCheck className="w-5 h-5 text-blue-500" />
+            </div>
+            <div className="flex flex-col">
+              <h3 className="text-base font-bold text-foreground uppercase tracking-tight">Ranking Barbeiros</h3>
+              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">
+                Total Faturado
+              </span>
+            </div>
+          </div>
+          <div className="space-y-6">
+            {barberRanking.slice(0, 4).map((b) => (
+              <div key={b.id} className="space-y-2">
+                <div className="flex justify-between items-end">
+                  <span className="text-xs font-bold text-foreground uppercase tracking-tight">{b.name}</span>
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] font-bold text-blue-500 uppercase">{b.count} atendimentos</span>
+                    <span className="text-[10px] text-muted-foreground font-bold tracking-wider">R$ {b.revenue.toFixed(2)}</span>
+                  </div>
+                </div>
+                <div className="w-full bg-muted h-2 rounded-full overflow-hidden mt-1 relative">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(b.revenue / (barberRanking[0]?.revenue || 1)) * 100}%` }}
+                    className="bg-blue-500 h-full rounded-full" 
+                  />
+                </div>
+              </div>
+            ))}
+            {barberRanking.length === 0 && (
+              <p className="text-xs text-muted-foreground uppercase text-center mt-8">Nenhum barbeiro ativo neste período.</p>
+            )}
+          </div>
+        </Card>
+
         {/* Services High */}
-        <Card className="border-border bg-card shadow-sm rounded-3xl p-8">
-          <div className="flex items-center gap-3 mb-8">
+        <Card className="border-border bg-card shadow-sm rounded-3xl p-4 sm:p-8 min-w-0">
+          <div className="flex items-center gap-3 mb-6 sm:mb-8">
             <div className="p-2.5 bg-primary/10 rounded-xl">
               <Scissors className="w-5 h-5 text-primary" />
             </div>
@@ -398,8 +556,8 @@ export default function Dashboard() {
         </Card>
 
         {/* Product Sales */}
-        <Card className="border-border bg-card shadow-sm rounded-3xl p-8">
-          <div className="flex items-center gap-3 mb-8">
+        <Card className="border-border bg-card shadow-sm rounded-3xl p-4 sm:p-8 min-w-0">
+          <div className="flex items-center gap-3 mb-6 sm:mb-8">
             <div className="p-2.5 bg-secondary/30 rounded-xl">
               <Package className="w-5 h-5 text-secondary-foreground" />
             </div>
@@ -446,7 +604,7 @@ export default function Dashboard() {
             <Button size="sm" className="rounded-lg text-[10px] font-bold uppercase tracking-widest px-6 h-10">Exportar Logs</Button>
           </div>
         </CardHeader>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto hidden md:block">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40 hover:bg-transparent">
@@ -493,6 +651,41 @@ export default function Dashboard() {
               })}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Mobile View Extrato */}
+        <div className="md:hidden flex flex-col divide-y divide-border/50">
+          {sortedRecentSales.slice(0, 10).map((sale) => {
+            const sDate = sale.createdAt;
+            if (!sDate) return null;
+            const date = sDate.toDate ? sDate.toDate() : parseISO(sale.createdAt);
+            return (
+              <div key={sale.id} className="flex flex-col p-4 bg-card hover:bg-muted/10 transition-colors">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs uppercase shrink-0">
+                      {sale.clientName?.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-sm uppercase tracking-tight leading-none mb-1">{sale.clientName}</span>
+                      <span className="text-[10px] uppercase text-muted-foreground font-bold tracking-widest">{format(date, 'dd/MM/yyyy HH:mm')}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold mb-0.5">Total</span>
+                    <span className="font-black text-sm text-foreground tracking-tight">R$ {sale.total.toFixed(2)}</span>
+                  </div>
+                </div>
+                <div className="flex gap-1.5 flex-wrap">
+                  {sale.items?.map((item: any, idx: number) => (
+                    <span key={idx} className={`text-[9px] font-bold px-2 py-0.5 rounded-md bg-muted text-muted-foreground uppercase tracking-wider`}>
+                      {item.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </Card>
     </div>
