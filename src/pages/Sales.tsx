@@ -556,7 +556,7 @@ export default function Sales() {
                 </div>
               </div>
 
-              <div className="space-y-4 pt-4 border-t border-border max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:z-40 max-md:bg-background/90 max-md:backdrop-blur-xl max-md:p-4 max-md:border-t-solid max-md:shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)]">
+              <div className="space-y-4 pt-4 border-t border-border max-md:fixed max-md:bottom-[68px] max-md:left-0 max-md:right-0 max-md:z-40 max-md:bg-background/90 max-md:backdrop-blur-xl max-md:p-4 max-md:border-t-solid max-md:shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)]">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Subtotal</span>
                   <span className="text-sm font-bold text-foreground">R$ {total.toFixed(2)}</span>
@@ -570,9 +570,14 @@ export default function Sales() {
                 </div>
 
                 <Button
-                  className="barber-button-primary w-full h-16 max-md:h-14 text-sm flex items-center justify-center gap-3 disabled:opacity-20 transition-all shadow-lg shadow-primary/20" 
+                  type="button"
+                  className="barber-button-primary w-full h-16 max-md:h-14 text-sm flex items-center justify-center gap-3 disabled:opacity-20 transition-all shadow-lg shadow-primary/20 touch-manipulation" 
                   disabled={currentSale.length === 0 || !isActive}
-                  onClick={finalizeSale}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    finalizeSale();
+                  }}
                 >
                   <CheckCircle2 className="w-5 h-5 max-md:w-4 max-md:h-4" /> FINALIZAR VENDA
                 </Button>
