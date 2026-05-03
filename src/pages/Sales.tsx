@@ -197,6 +197,10 @@ export default function Sales() {
       setSelectedClientId('none');
       setSelectedBarberId('none');
       setClientSearch('');
+      setBarberSearch('');
+      setServiceSearch('');
+      setProductSearch('');
+      setPaymentMethod('Dinheiro');
       setIsSuccessOpen(true);
     } catch (error: any) {
       console.error(error);
