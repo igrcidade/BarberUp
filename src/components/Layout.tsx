@@ -290,31 +290,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               {children}
             </div>
           </main>
-
-          {/* Bottom Navigation for Mobile */}
-          <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-border flex items-center justify-around pb-safe h-[68px]">
-            {menuItems.filter(i => ['/app/dashboard', '/app/sales', '/app/clients', '/app/barbers'].includes(i.path)).map((item) => {
-              const isItemActive = location.pathname === item.path;
-              return (
-                <Link key={item.path} to={item.path} className="flex flex-col items-center justify-center w-full h-full gap-1">
-                  <div className={`p-1.5 rounded-xl transition-all ${isItemActive ? 'bg-primary/20 text-primary' : 'text-muted-foreground'}`}>
-                    <item.icon className="w-5 h-5" />
-                  </div>
-                  <span className={`text-[9px] font-bold uppercase tracking-tight ${isItemActive ? 'text-primary' : 'text-muted-foreground'}`}>
-                    {item.title}
-                  </span>
-                </Link>
-              );
-            })}
-            <div className="flex flex-col items-center justify-center w-full h-full gap-1 cursor-pointer">
-              <SidebarTrigger className="flex flex-col items-center justify-center h-auto w-auto bg-transparent border-none p-0 hover:bg-transparent data-[state=open]:bg-transparent data-[state=open]:text-primary mx-auto [&>svg]:hidden">
-                <div className="p-1.5 rounded-xl text-muted-foreground">
-                  <Menu className="w-5 h-5" />
-                </div>
-                <span className="text-[9px] font-bold uppercase tracking-tight text-muted-foreground">Mais</span>
-              </SidebarTrigger>
-            </div>
-          </nav>
         </SidebarInset>
       </div>
     </SidebarProvider>

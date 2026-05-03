@@ -28,6 +28,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { format, parseISO } from 'date-fns';
 import { subscribeToCollection, addDocument, deleteDocument, updateDocument } from '../lib/db';
 import { useAuth } from '@/lib/auth';
+import { toast } from 'sonner';
 
 const highlightMatch = (text: string, query: string) => {
   if (!query) return text;
@@ -57,6 +58,7 @@ export default function Sales() {
   const [selectedClientId, setSelectedClientId] = useState<string>('none');
   const [selectedBarberId, setSelectedBarberId] = useState<string>('none');
   const [paymentMethod, setPaymentMethod] = useState<string>('Dinheiro');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [serviceSearch, setServiceSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
@@ -130,70 +132,78 @@ export default function Sales() {
   const total = currentSale.reduce((acc, curr) => acc + curr.price, 0);
 
   const finalizeSale = async () => {
-    if (currentSale.length === 0) return;
+    if (currentSale.length === 0 || isSubmitting) return;
 
-    const selectedClient = clients.find(c => c.id === selectedClientId);
-    const selectedBarber = barbers.find(b => b.id === selectedBarberId);
-    
-    // Calcula a comissão por item dependendo do seu tipo
-    let commissionTotal = 0;
-    
-    const productQuantities: Record<string, number> = {};
-    
-    const items = currentSale.map(item => {
-      let commissionValue = 0;
-      if (selectedBarber) {
-        if (item.type === 'service') {
-          const comRate = selectedBarber.commissionService !== undefined ? selectedBarber.commissionService : (selectedBarber.commission || 0);
-          commissionValue = item.price * (comRate / 100);
-        } else if (item.type === 'product') {
-          const comRate = selectedBarber.commissionProduct || 0;
-          commissionValue = item.price * (comRate / 100);
-        }
-        commissionTotal += commissionValue;
-      }
+    setIsSubmitting(true);
+    try {
+      const selectedClient = clients.find(c => c.id === selectedClientId);
+      const selectedBarber = barbers.find(b => b.id === selectedBarberId);
       
-      if (item.type === 'product') {
-        if (!productQuantities[item.id]) {
-          productQuantities[item.id] = 0;
-        }
-        productQuantities[item.id] += 1;
-      }
+      // Calcula a comissão por item dependendo do seu tipo
+      let commissionTotal = 0;
       
-      return {
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        type: item.type,
-        commissionValue
+      const productQuantities: Record<string, number> = {};
+      
+      const items = currentSale.map(item => {
+        let commissionValue = 0;
+        if (selectedBarber) {
+          if (item.type === 'service') {
+            const comRate = selectedBarber.commissionService !== undefined ? selectedBarber.commissionService : (selectedBarber.commission || 0);
+            commissionValue = item.price * (comRate / 100);
+          } else if (item.type === 'product') {
+            const comRate = selectedBarber.commissionProduct || 0;
+            commissionValue = item.price * (comRate / 100);
+          }
+          commissionTotal += commissionValue;
+        }
+        
+        if (item.type === 'product') {
+          if (!productQuantities[item.id]) {
+            productQuantities[item.id] = 0;
+          }
+          productQuantities[item.id] += 1;
+        }
+        
+        return {
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          type: item.type,
+          commissionValue
+        };
+      });
+
+      for (const [productId, quantity] of Object.entries(productQuantities)) {
+        const product = products.find(p => p.id === productId);
+        if (product) {
+          const newStock = Math.max(0, (product.stock || 0) - quantity);
+          await updateDocument('products', productId, { stock: newStock });
+        }
+      }
+
+      const saleData = {
+        clientId: selectedClientId === 'none' ? null : selectedClientId,
+        clientName: selectedClient ? selectedClient.name : (clientSearch || 'Venda Avulsa'),
+        barberId: selectedBarberId === 'none' ? null : selectedBarberId,
+        barberName: selectedBarber ? selectedBarber.name : null,
+        items,
+        total,
+        paymentMethod,
+        commissionTotal
       };
-    });
 
-    for (const [productId, quantity] of Object.entries(productQuantities)) {
-      const product = products.find(p => p.id === productId);
-      if (product) {
-        const newStock = Math.max(0, (product.stock || 0) - quantity);
-        await updateDocument('products', productId, { stock: newStock });
-      }
+      await addDocument('sales', saleData);
+      setCurrentSale([]);
+      setSelectedClientId('none');
+      setSelectedBarberId('none');
+      setClientSearch('');
+      setIsSuccessOpen(true);
+    } catch (error: any) {
+      console.error(error);
+      toast.error('Ocorreu um erro ao finalizar a venda.', { description: error?.message || 'Tente novamente mais tarde.' });
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const saleData = {
-      clientId: selectedClientId === 'none' ? null : selectedClientId,
-      clientName: selectedClient ? selectedClient.name : (clientSearch || 'Venda Avulsa'),
-      barberId: selectedBarberId === 'none' ? null : selectedBarberId,
-      barberName: selectedBarber ? selectedBarber.name : null,
-      items,
-      total,
-      paymentMethod,
-      commissionTotal
-    };
-
-    await addDocument('sales', saleData);
-    setCurrentSale([]);
-    setSelectedClientId('none');
-    setSelectedBarberId('none');
-    setClientSearch('');
-    setIsSuccessOpen(true);
   };
 
   const handleEditSale = (sale: any) => {
@@ -538,7 +548,7 @@ export default function Sales() {
               )}
             </div>
 
-            <div className="p-8 space-y-6 border-t border-border bg-muted/20 max-md:pb-[200px]">
+            <div className="p-8 space-y-6 border-t border-border bg-muted/20 max-md:pb-[160px]">
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-primary ml-1">3. Método de Pagamento</Label>
@@ -556,7 +566,7 @@ export default function Sales() {
                 </div>
               </div>
 
-              <div className="space-y-4 pt-4 border-t border-border max-md:fixed max-md:bottom-[68px] max-md:left-0 max-md:right-0 max-md:z-40 max-md:bg-background/90 max-md:backdrop-blur-xl max-md:p-4 max-md:border-t-solid max-md:shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)]">
+              <div className="space-y-4 pt-4 border-t border-border max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:z-40 max-md:bg-background/90 max-md:backdrop-blur-xl max-md:p-4 max-md:pb-[calc(1rem+env(safe-area-inset-bottom))] max-md:border-t-solid max-md:shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)]">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Subtotal</span>
                   <span className="text-sm font-bold text-foreground">R$ {total.toFixed(2)}</span>
@@ -571,15 +581,16 @@ export default function Sales() {
 
                 <Button
                   type="button"
-                  className="barber-button-primary w-full h-16 max-md:h-14 text-sm flex items-center justify-center gap-3 disabled:opacity-20 transition-all shadow-lg shadow-primary/20 touch-manipulation" 
-                  disabled={currentSale.length === 0 || !isActive}
+                  className="barber-button-primary w-full h-16 max-md:h-14 text-sm flex items-center justify-center gap-3 disabled:opacity-50 transition-all shadow-lg shadow-primary/20 touch-manipulation" 
+                  disabled={currentSale.length === 0 || !isActive || isSubmitting}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     finalizeSale();
                   }}
                 >
-                  <CheckCircle2 className="w-5 h-5 max-md:w-4 max-md:h-4" /> FINALIZAR VENDA
+                  <CheckCircle2 className="w-5 h-5 max-md:w-4 max-md:h-4" /> 
+                  {isSubmitting ? 'FINALIZANDO...' : 'FINALIZAR VENDA'}
                 </Button>
               </div>
             </div>
