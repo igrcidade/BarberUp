@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from 'sonner';
+import { formatPhone } from '@/lib/utils';
 import { 
   Scissors, 
   TrendingUp, 
@@ -15,7 +16,12 @@ import {
   ShieldCheck,
   Star,
   Clock,
-  Smartphone
+  Smartphone,
+  DollarSign,
+  Activity,
+  Trophy,
+  PackageCheck,
+  Users2
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Button } from '@/components/ui/button';
@@ -293,6 +299,90 @@ export default function Landing() {
               ))}
             </ul>
           </div>
+        </div>
+
+        {/* DETAILED FEATURES SECTION */}
+        <div className="max-w-7xl mx-auto mt-32">
+          <div className="text-center space-y-4 mb-16">
+            <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20 font-bold px-3 py-1 text-[10px] uppercase tracking-widest">
+              Ecossistema Completo
+            </Badge>
+            <h3 className="text-3xl md:text-5xl font-black tracking-tight uppercase">
+              O controle absoluto <br className="hidden md:block" /> da sua <span className="text-orange-500">Barbearia</span>
+            </h3>
+            <p className="text-zinc-400 font-bold uppercase tracking-widest text-xs mt-2 max-w-2xl mx-auto">
+              Conheça as ferramentas que vão revolucionar sua gestão e multiplicar seus lucros
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
+            {[
+              {
+                icon: DollarSign,
+                title: "Vendas e Despesas",
+                desc: "Controle cirúrgico do seu faturamento e custos. Saiba exatamente de onde vem e para onde vai o seu dinheiro em tempo real."
+              },
+              {
+                icon: Users2,
+                title: "Histórico de Clientes",
+                desc: "Cadastro completo com o histórico de visitas, últimos serviços realizados por cliente para um atendimento 100% personalizado."
+              },
+              {
+                icon: Activity,
+                title: "Retenção Inteligente",
+                desc: "Monitoramento de clientes propensos a abandono (Em Atenção/Inativos). Aja rápido antes de perder faturamento."
+              },
+              {
+                icon: Trophy,
+                title: "Top Serviços e Produtos",
+                desc: "Saiba quais são os produtos e serviços que mais vendem e quais trazem maior retorno financeiro para o seu caixa."
+              },
+              {
+                icon: Scissors,
+                title: "Gestão de Equipe e Comissões",
+                desc: "Cadastre seus barbeiros, defina taxas personalizadas e acompanhe as comissões geradas no mês de forma 100% automatizada."
+              },
+              {
+                icon: PackageCheck,
+                title: "Controle de Produtos",
+                desc: "Cadastro de produtos, limite mínimo de estoque e controle preciso de entradas e saídas no Ponto de Venda."
+              }
+            ].map((feature, i) => (
+              <motion.div 
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                viewport={{ once: true }}
+                className="bg-zinc-900/50 border border-white/5 p-8 rounded-3xl hover:bg-zinc-900 hover:border-white/10 transition-all group"
+              >
+                <div className="bg-black p-4 rounded-2xl w-fit mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-orange-500/5">
+                  <feature.icon className="w-6 h-6 text-orange-500" />
+                </div>
+                <h4 className="text-lg font-bold uppercase tracking-tight text-white mb-3">{feature.title}</h4>
+                <p className="text-zinc-400 font-medium text-sm leading-relaxed">{feature.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Modern Dashboard Image */}
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-2xl relative border border-white/10"
+          >
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10" />
+            <img 
+              src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1600&q=80" 
+              alt="Dashboard de Gestão" 
+              className="w-full h-auto max-h-[500px] object-cover mix-blend-luminosity opacity-80"
+            />
+            <div className="absolute bottom-10 left-10 z-20">
+              <Badge className="bg-orange-500 text-black font-black uppercase tracking-widest px-3 py-1 mb-3">Visão Completa</Badge>
+              <h3 className="text-3xl font-black text-white uppercase tracking-tighter">Decisões baseadas <br/> em dados.</h3>
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -671,7 +761,7 @@ export default function Landing() {
                 autoComplete="tel"
                 placeholder="(22) 99999-9999"
                 value={leadPhone}
-                onChange={(e) => setLeadPhone(e.target.value)}
+                onChange={(e) => setLeadPhone(formatPhone(e.target.value))}
                 required
                 className="bg-white/5 border-white/10 rounded-xl h-12 text-white font-bold placeholder:text-zinc-700 focus:border-orange-500 transition-all shadow-inner"
               />

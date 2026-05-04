@@ -125,7 +125,7 @@ export default function Expenses() {
     setFormData({
       description: expense.description,
       amount: expense.amount.toString(),
-      category: expense.category,
+      category: expense.category || 'Outros',
       date: defaultDate,
       isRecurrent: mode === 'future' ? true : (mode === 'normal' ? expense.isRecurrent : false)
     });
@@ -257,7 +257,7 @@ export default function Expenses() {
                   <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Categoria</Label>
                     <Select 
-                      value={formData.category} 
+                      value={formData.category || "Outros"} 
                       onValueChange={(val) => setFormData({ ...formData, category: val })}
                     >
                       <SelectTrigger className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold">
@@ -539,9 +539,9 @@ export default function Expenses() {
               <div className="flex flex-col gap-3 mt-6">
                 <Button variant="outline" onClick={() => confirmDelete('this_month')} className="h-14 justify-start px-4 rounded-xl text-left border-border flex flex-col items-start gap-1 hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-all">
                   <span className="font-bold text-sm uppercase">Excluir Este</span>
-                  <span className="text-[10px] text-muted-foreground">Apenas a despesa deste ciclo será excluída.</span>
+                  <span className="text-[10px] text-muted-foreground group-hover:text-destructive/80">Apenas a despesa deste ciclo será excluída.</span>
                 </Button>
-                <Button variant="outline" onClick={() => confirmDelete('future')} className="h-14 justify-start px-4 rounded-xl text-left border-border flex flex-col items-start gap-1 hover:bg-destructive hover:text-destructive-foreground transition-all text-destructive">
+                <Button variant="outline" onClick={() => confirmDelete('future')} className="h-14 justify-start px-4 rounded-xl text-left border-border flex flex-col items-start gap-1 hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-all text-destructive">
                   <span className="font-bold text-sm uppercase">Excluir Recorrência</span>
                   <span className="text-[10px] opacity-80">Encerra a recorrência (histórico passado será mantido).</span>
                 </Button>

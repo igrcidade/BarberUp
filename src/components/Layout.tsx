@@ -182,9 +182,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </Avatar>
                   <div className="flex flex-col overflow-hidden">
                     <span className="text-xs font-bold text-foreground truncate leading-none mb-1 uppercase tracking-tight">
-                      {user?.displayName || 'Usuário'}
+                      {profile?.name || user?.displayName || 'Usuário'}
                     </span>
-                    <span className="text-[9px] font-bold text-primary uppercase tracking-wider opacity-80">Cliente BarberUp</span>
+                    <span className="text-[9px] font-bold text-primary uppercase tracking-wider opacity-80">
+                      {profile?.barbershopName || 'Cliente BarberUp'}
+                    </span>
                   </div>
                 </div>
                 <Button 

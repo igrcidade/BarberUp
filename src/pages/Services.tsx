@@ -57,7 +57,7 @@ export default function Services() {
     setFormData({ 
       name: service.name, 
       price: service.price.toString(), 
-      category: service.category,
+      category: service.category || 'Cabelo',
       duration: service.duration?.toString() || ''
     });
     setIsOpen(true);
@@ -144,7 +144,7 @@ export default function Services() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Categoria</Label>
-                  <Select value={formData.category} onValueChange={(val) => setFormData({ ...formData, category: val })}>
+                  <Select value={formData.category || "Cabelo"} onValueChange={(val) => setFormData({ ...formData, category: val })}>
                     <SelectTrigger className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold">
                       <SelectValue />
                     </SelectTrigger>
@@ -316,7 +316,7 @@ export default function Services() {
           className="md:hidden fixed bottom-[88px] right-4 h-14 w-14 rounded-full shadow-xl z-50 flex items-center justify-center p-0"
           onClick={() => {
             setEditingService(null);
-            setFormData({ name: '', price: '0', category: '', duration: '', stock: '', minStock: '', brand: '' });
+            setFormData({ name: '', price: '', category: 'Cabelo', duration: '' });
             setIsOpen(true);
           }}
           disabled={!isActive}

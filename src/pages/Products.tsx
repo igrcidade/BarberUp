@@ -64,7 +64,7 @@ export default function Products() {
       brand: product.brand || '',
       price: product.price.toString(), 
       stock: product.stock.toString(),
-      category: product.category,
+      category: product.category || 'Cabelo',
       minStock: product.minStock?.toString() || ''
     });
     setIsOpen(true);
@@ -163,7 +163,7 @@ export default function Products() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Categoria</Label>
-                    <Select value={formData.category} onValueChange={(val) => setFormData({ ...formData, category: val })}>
+                    <Select value={formData.category || "Cabelo"} onValueChange={(val) => setFormData({ ...formData, category: val })}>
                       <SelectTrigger className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold">
                         <SelectValue />
                       </SelectTrigger>
@@ -364,7 +364,7 @@ export default function Products() {
           className="md:hidden fixed bottom-[88px] right-4 h-14 w-14 rounded-full shadow-xl z-50 flex items-center justify-center p-0"
           onClick={() => {
             setEditingProduct(null);
-            setFormData({ name: '', brand: '', price: '', stock: '', category: '', minStock: '' });
+            setFormData({ name: '', brand: '', price: '', stock: '', category: 'Cabelo', minStock: '' });
             setIsOpen(true);
           }}
           disabled={!isActive}

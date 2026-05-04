@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { formatPhone } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +23,7 @@ export default function Account() {
   
   const [formData, setFormData] = useState({
     name: '',
+    barbershopName: '',
     phone: '',
     document: '', // CPF/CNPJ
     address: '',
@@ -37,6 +39,7 @@ export default function Account() {
         const data = snap.data();
         setFormData({
           name: data.name || '',
+          barbershopName: data.barbershopName || '',
           phone: data.phone || '',
           document: data.document || '',
           address: data.address || '',
@@ -54,6 +57,7 @@ export default function Account() {
       const ref = doc(db, 'users', user.uid);
       await updateDoc(ref, {
         name: formData.name,
+        barbershopName: formData.barbershopName,
         phone: formData.phone,
         document: formData.document,
         address: formData.address,
@@ -112,7 +116,7 @@ export default function Account() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-5 duration-500 max-w-4xl pb-10">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-5 duration-500 max-w-2xl mx-auto pb-24">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold uppercase tracking-tighter text-foreground">Minha Conta</h1>
         <p className="text-muted-foreground text-sm font-medium">Gerencie seu perfil, documentos e informações do negócio</p>
@@ -125,12 +129,21 @@ export default function Account() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
             <div className="space-y-2">
-              <Label className="text-xs uppercase font-bold tracking-widest text-muted-foreground">Nome da Barbearia / Titular</Label>
+              <Label className="text-xs uppercase font-bold tracking-widest text-muted-foreground">Nome do Titular</Label>
               <Input 
-                value={formData.name}
+                value={formData.name || ""}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
+                placeholder="Ex: João da Silva"
+                className="bg-muted/50 font-bold"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs uppercase font-bold tracking-widest text-muted-foreground">Nome da Barbearia</Label>
+              <Input 
+                value={formData.barbershopName || ""}
+                onChange={(e) => setFormData({...formData, barbershopName: e.target.value})}
                 placeholder="Ex: BarberUp Studio"
                 className="bg-muted/50 font-bold"
               />
@@ -138,7 +151,7 @@ export default function Account() {
             <div className="space-y-2">
               <Label className="text-xs uppercase font-bold tracking-widest text-muted-foreground">CPF / CNPJ</Label>
               <Input 
-                value={formData.document}
+                value={formData.document || ""}
                 onChange={(e) => setFormData({...formData, document: e.target.value})}
                 placeholder="000.000.000-00 ou 00.000.000/0001-00"
                 className="bg-muted/50"
@@ -147,19 +160,18 @@ export default function Account() {
             <div className="space-y-2">
               <Label className="text-xs uppercase font-bold tracking-widest text-muted-foreground">E-mail de Acesso</Label>
               <Input 
-                value={user?.email || ''}
+                value={user?.email || ""}
                 readOnly
                 disabled
-                className="bg-muted text-muted-foreground cursor-not-allowed opacity-50"
+                className="bg-muted text-muted-foreground cursor-not-allowed opacity-50 font-bold"
               />
             </div>
             <div className="space-y-2">
               <Label className="text-xs uppercase font-bold tracking-widest text-muted-foreground">WhatsApp / Telefone</Label>
               <Input 
-                value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                placeholder="(00) 00000-0000"
-                className="bg-muted/50"
+                value={formData.phone || ""}
+                onChange={(e) => setFormData({...formData, phone: formatPhone(e.target.value)})}
+                className="bg-muted/50 font-bold"
               />
             </div>
           </div>
@@ -173,14 +185,14 @@ export default function Account() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
-          <div className="grid grid-cols-1 gap-6">
+          <div className="grid grid-cols-1 gap-6 text-left">
             <div className="space-y-2">
               <Label className="text-xs uppercase font-bold tracking-widest text-muted-foreground">Endereço Completo</Label>
               <Input 
-                value={formData.address}
+                value={formData.address || ""}
                 onChange={(e) => setFormData({...formData, address: e.target.value})}
                 placeholder="Ex: Rua das Flores, 123 - Centro"
-                className="bg-muted/50"
+                className="bg-muted/50 font-bold"
               />
             </div>
             <div className="space-y-2">
@@ -188,10 +200,10 @@ export default function Account() {
                  Horário de Funcionamento
               </Label>
               <Input 
-                value={formData.operatingHours}
+                value={formData.operatingHours || ""}
                 onChange={(e) => setFormData({...formData, operatingHours: e.target.value})}
                 placeholder="Ex: Seg a Sab das 09:00 às 20:00"
-                className="bg-muted/50"
+                className="bg-muted/50 font-bold"
               />
             </div>
           </div>

@@ -29,6 +29,7 @@ import { subscribeToCollection, addDocument, updateDocument, deleteDocument } fr
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
+import { formatPhone } from '@/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '@/lib/auth';
 
@@ -185,7 +186,7 @@ export default function Clients() {
                   <Input 
                     id="phone" 
                     value={formData.phone} 
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })} 
+                    onChange={(e) => setFormData({ ...formData, phone: formatPhone(e.target.value) })} 
                     className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
                   />
                 </div>
@@ -199,9 +200,8 @@ export default function Clients() {
                   />
                 </div>
               </div>
-              <DialogFooter className="pt-4 flex gap-3">
-                <Button type="button" variant="ghost" onClick={() => setIsAddOpen(false)} className="rounded-xl h-12 text-muted-foreground font-bold text-xs uppercase tracking-wider">Cancelar</Button>
-                <Button type="submit" className="barber-button-primary px-8 shadow-sm">
+              <DialogFooter className="pt-4">
+                <Button type="submit" className="barber-button-primary w-full h-12 shadow-sm uppercase tracking-wider text-xs">
                   {editingClient ? 'SALVAR ALTERAÇÕES' : 'CONFIRMAR CADASTRO'}
                 </Button>
               </DialogFooter>

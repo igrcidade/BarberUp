@@ -74,6 +74,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  // Logout automático às 23:59
+  useEffect(() => {
+    if (!user) return;
+
+    const checkTimeAndLogout = () => {
+      const now = new Date();
+      if (now.getHours() === 23 && now.getMinutes() === 59) {
+        auth.signOut().catch(console.error);
+      }
+    };
+
+    const interval = setInterval(checkTimeAndLogout, 30000);
+    checkTimeAndLogout();
+
+    return () => clearInterval(interval);
+  }, [user]);
+
   const isAdmin = user?.email?.toLowerCase() === 'igor.cidade@hotmail.com' || user?.email?.toLowerCase() === 'igrcidade@gmail.com';
   
   // Custom profile for Admin to avoid trial banners and ensure active state

@@ -45,7 +45,7 @@ async function startServer() {
       const { title, price, userId, email, planType } = req.body;
       
       // Obter o host dinamicamente para back_urls
-      const protocol = req.headers['x-forwarded-proto'] || 'http';
+      const protocol = req.headers['x-forwarded-proto'] || 'https';
       const host = req.headers.host;
       const appUrl = `${protocol}://${host}`;
 
@@ -72,7 +72,7 @@ async function startServer() {
         back_urls: {
           success: `${appUrl}/checkout/success`,
           failure: `${appUrl}/app/subscription`,
-          pending: `${appUrl}/checkout/pending`
+          pending: `${appUrl}/checkout/pending`,
         },
         auto_return: "approved",
         statement_descriptor: "BARBERUP"

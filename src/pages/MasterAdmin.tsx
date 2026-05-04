@@ -147,13 +147,16 @@ export default function MasterAdmin() {
     }
   };
 
-  const activeCount = users.filter(u => u.subscriptionStatus === 'active').length;
-  const trialCount = users.filter(u => u.subscriptionStatus === 'trial').length;
-  const expiredCount = users.filter(u => u.subscriptionStatus === 'expired' || u.subscriptionStatus === 'blocked').length;
+  const masters = ['igor.cidade@hotmail.com', 'igrcidade@gmail.com'];
+  const validUsers = users.filter(u => !masters.includes(u.email?.toLowerCase()));
+
+  const activeCount = validUsers.filter(u => u.subscriptionStatus === 'active').length;
+  const trialCount = validUsers.filter(u => u.subscriptionStatus === 'trial').length;
+  const expiredCount = validUsers.filter(u => u.subscriptionStatus === 'expired' || u.subscriptionStatus === 'blocked').length;
   
   // Taxa de Conversão: Quantos usuários totais se tornaram pagantes
-  const conversionRate = users.length > 0 
-    ? ((activeCount / users.length) * 100).toFixed(1) 
+  const conversionRate = validUsers.length > 0 
+    ? ((activeCount / validUsers.length) * 100).toFixed(1) 
     : "0";
     
   // Taxa de Churn Estimada: Proporção de usuários que expiraram em relação à base total histórica
@@ -161,7 +164,7 @@ export default function MasterAdmin() {
     ? ((expiredCount / (activeCount + expiredCount)) * 100).toFixed(1)
     : "0";
 
-  const mrr = users.reduce((acc, curr) => {
+  const mrr = validUsers.reduce((acc, curr) => {
     if (curr.subscriptionStatus === 'active') {
       if (curr.subscriptionPlan === 'mensal') return acc + 79.9;
       if (curr.subscriptionPlan === 'semestral') return acc + 69.9;
@@ -170,11 +173,7 @@ export default function MasterAdmin() {
     return acc;
   }, 0);
 
-  const filteredUsers = users.filter((u) => {
-    // Excluir administradores da listagem de clientes
-    const masters = ['igor.cidade@hotmail.com', 'igrcidade@gmail.com'];
-    if (masters.includes(u.email?.toLowerCase())) return false;
-
+  const filteredUsers = validUsers.filter((u) => {
     const matchName = (u.name || '').toLowerCase().includes(searchName.toLowerCase()) || 
                       (u.barbershopName || '').toLowerCase().includes(searchName.toLowerCase()) ||
                       (u.email || '').toLowerCase().includes(searchName.toLowerCase());
@@ -256,7 +255,7 @@ export default function MasterAdmin() {
         <Card className="bg-card border-border shadow-xl">
           <CardContent className="p-5">
             <p className="text-[10px] font-black uppercase text-muted-foreground mb-1 tracking-widest">Base Total</p>
-            <h3 className="text-2xl font-black">{users.length}</h3>
+            <h3 className="text-2xl font-black">{validUsers.length}</h3>
           </CardContent>
         </Card>
         <Card className="bg-card border-border shadow-xl">
@@ -335,7 +334,7 @@ export default function MasterAdmin() {
                 />
               </div>
 
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter || "all"} onValueChange={setStatusFilter}>
                 <SelectTrigger className="h-11 w-full md:w-44 bg-muted/50 border-border text-xs uppercase font-bold tracking-widest rounded-xl">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -484,7 +483,7 @@ export default function MasterAdmin() {
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Vincular Plano</Label>
                       <Select 
-                        defaultValue={selectedUser.subscriptionPlan || 'mensal'} 
+                        value={selectedUser.subscriptionPlan || 'mensal'} 
                         onValueChange={(val) => handleUpdateUserStatus(selectedUser.id, { subscriptionPlan: val })}
                       >
                         <SelectTrigger className="h-11 bg-muted/20 border-border rounded-xl font-black uppercase text-xs">

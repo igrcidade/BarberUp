@@ -5,17 +5,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Users, Search, Edit2, Mail, Scissors, User as UserIcon, Trash2 } from 'lucide-react';
+import { Plus, Users, Search, Edit2, Mail, Scissors, User as UserIcon, Trash2, Phone } from 'lucide-react';
 import { addDocument, updateDocument, deleteDocument, subscribeToCollection } from '@/lib/db';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
+import { formatPhone } from '@/lib/utils';
 
 export default function Barbers() {
   const { user, isActive } = useAuth();
   const [barbers, setBarbers] = useState<any[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [editingBarber, setEditingBarber] = useState<any>(null);
-  const [formData, setFormData] = useState({ name: '', email: '', commissionService: '', commissionProduct: '', active: true });
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', commissionService: '', commissionProduct: '', active: true });
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -31,6 +32,7 @@ export default function Barbers() {
     const data = {
       name: formData.name,
       email: formData.email,
+      phone: formData.phone,
       commissionService: Number(formData.commissionService),
       commissionProduct: Number(formData.commissionProduct),
       commission: Number(formData.commissionService), // Backward compatibility
@@ -51,7 +53,7 @@ export default function Barbers() {
       }
       setIsOpen(false);
       setEditingBarber(null);
-      setFormData({ name: '', email: '', commissionService: '', commissionProduct: '', active: true });
+      setFormData({ name: '', email: '', phone: '', commissionService: '', commissionProduct: '', active: true });
     } catch (e) {
       console.error(e);
       toast.error('Erro ao salvar barbeiro');
@@ -88,6 +90,7 @@ export default function Barbers() {
     setFormData({
       name: barber.name,
       email: barber.email || '',
+      phone: barber.phone || '',
       commissionService: barber.commissionService?.toString() || barber.commission?.toString() || '',
       commissionProduct: barber.commissionProduct?.toString() || '',
       active: barber.active ?? true,
@@ -112,7 +115,7 @@ export default function Barbers() {
           setIsOpen(open);
           if (!open) {
             setEditingBarber(null);
-            setFormData({ name: '', email: '', commissionService: '', commissionProduct: '', active: true });
+            setFormData({ name: '', email: '', phone: '', commissionService: '', commissionProduct: '', active: true });
           }
         }}>
           <DialogTrigger render={<Button disabled={!isActive} className="hidden md:flex barber-button-primary h-12 px-8 shadow-md" />}>
@@ -138,16 +141,31 @@ export default function Barbers() {
                   </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input 
-                      type="email"
-                      className="pl-11 h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold text-sm"
-                      value={formData.email} 
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })} 
-                    />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input 
+                        type="email"
+                        className="pl-11 h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold text-sm"
+                        value={formData.email} 
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })} 
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">WhatsApp / Telefone</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input 
+                        type="tel"
+                        className="pl-11 h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold text-sm"
+                        value={formData.phone} 
+                        onChange={(e) => setFormData({ ...formData, phone: formatPhone(e.target.value) })} 
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -319,7 +337,7 @@ export default function Barbers() {
           className="md:hidden fixed bottom-[88px] right-4 h-14 w-14 rounded-full shadow-xl z-50 flex items-center justify-center p-0"
           onClick={() => {
             setEditingBarber(null);
-            setFormData({ name: '', email: '', commissionService: '', commissionProduct: '', active: true });
+            setFormData({ name: '', email: '', phone: '', commissionService: '', commissionProduct: '', active: true });
             setIsOpen(true);
           }}
           disabled={!isActive}

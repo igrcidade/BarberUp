@@ -24,6 +24,7 @@ import {
   DialogDescription
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { formatPhone } from '@/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, parseISO } from 'date-fns';
 import { subscribeToCollection, addDocument, deleteDocument, updateDocument } from '../lib/db';
@@ -656,7 +657,7 @@ export default function Sales() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-primary ml-1">3. Método de Pagamento</Label>
-                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <Select value={paymentMethod || "Dinheiro"} onValueChange={setPaymentMethod}>
                     <SelectTrigger className="w-full h-12 bg-card border-border rounded-xl text-sm focus:ring-2 focus:ring-primary/20 font-bold uppercase text-[10px] tracking-wider">
                       <SelectValue placeholder="Forma de Pagamento" />
                     </SelectTrigger>
@@ -776,7 +777,7 @@ export default function Sales() {
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Telefone / WhatsApp</Label>
                 <Input 
                   value={newClientPhone} 
-                  onChange={(e) => setNewClientPhone(e.target.value)} 
+                  onChange={(e) => setNewClientPhone(formatPhone(e.target.value))} 
                   className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
                 />
               </div>
@@ -820,7 +821,7 @@ function EditSaleDialog({ isOpen, onOpenChange, formData, setFormData, onSave, s
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
             <div className="space-y-2.5">
               <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest ml-1">Forma de Pagamento</Label>
-              <Select value={formData.paymentMethod} onValueChange={(val) => setFormData({ ...formData, paymentMethod: val })}>
+              <Select value={formData.paymentMethod || "Dinheiro"} onValueChange={(val) => setFormData({ ...formData, paymentMethod: val })}>
                 <SelectTrigger className="bg-muted/50 border-border rounded-xl h-12 focus:ring-1 focus:ring-primary/20 font-bold uppercase text-[10px]">
                   <SelectValue />
                 </SelectTrigger>
