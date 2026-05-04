@@ -7,7 +7,7 @@ export interface UserProfile {
   name: string;
   barbershopName: string;
   subscriptionPlan: string;
-  subscriptionStatus: 'active' | 'expired' | 'trial';
+  subscriptionStatus: 'active' | 'expired' | 'trial' | 'blocked';
   subscriptionEnd: string;
   createdAt: string;
 }
@@ -47,11 +47,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const defaultProfile = {
               name: currentUser.displayName || 'Usuário',
               barbershopName: 'Barbearia',
+              email: currentUser.email || '',
               subscriptionPlan: 'free',
               subscriptionStatus: 'trial' as const,
               subscriptionEnd: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-              createdAt: new Date().toISOString()
+              createdAt: new Date().toISOString(),
+              role: 'admin'
             };
+            // Comita o profile padrão no banco para garantir que o admin possa gerenciá-lo
+            setDoc(doc(db, 'users', currentUser.uid), defaultProfile).catch(e => console.error("Failed to recover missing user profile", e));
             setProfile(defaultProfile);
           }
         }, (error) => {
@@ -70,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const isAdmin = user?.email === 'igor.cidade@hotmail.com' || user?.email === 'igrcidade@gmail.com';
+  const isAdmin = user?.email?.toLowerCase() === 'igor.cidade@hotmail.com' || user?.email?.toLowerCase() === 'igrcidade@gmail.com';
   
   // Custom profile for Admin to avoid trial banners and ensure active state
   // Even if profile is null, if isAdmin is true, we provide a master profile

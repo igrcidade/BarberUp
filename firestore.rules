@@ -19,7 +19,9 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && (request.auth.token.email == 'igor.cidade@hotmail.com' || request.auth.token.email == 'igrcidade@gmail.com');
+      return isSignedIn() && 
+             'email' in request.auth.token && 
+             (request.auth.token.email == 'igor.cidade@hotmail.com' || request.auth.token.email == 'igrcidade@gmail.com');
     }
 
     // Default deny
@@ -29,54 +31,57 @@ service cloud.firestore {
 
     match /leads/{id} {
       allow create: if true;
+      allow read, delete: if isAdmin();
     }
 
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isAdmin();
-      allow delete: if isAdmin();
+      allow read, write: if isOwner(userId) || isAdmin();
     }
 
     match /profiles/{userId} {
-      allow read: if isOwner(userId);
-      allow write: if isOwner(userId);
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) || isAdmin();
     }
 
     match /services/{id} {
-      allow read: if isDataOwner();
+      allow read: if isDataOwner() || isAdmin();
       allow create: if isIncomingOwner();
-      allow update, delete: if isDataOwner() && isIncomingOwner();
+      allow update: if (isDataOwner() && isIncomingOwner()) || isAdmin();
+      allow delete: if isDataOwner() || isAdmin();
     }
 
     match /products/{id} {
-      allow read: if isDataOwner();
+      allow read: if isDataOwner() || isAdmin();
       allow create: if isIncomingOwner();
-      allow update, delete: if isDataOwner() && isIncomingOwner();
+      allow update: if (isDataOwner() && isIncomingOwner()) || isAdmin();
+      allow delete: if isDataOwner() || isAdmin();
     }
 
     match /clients/{id} {
-      allow read: if isDataOwner();
+      allow read: if isDataOwner() || isAdmin();
       allow create: if isIncomingOwner();
-      allow update, delete: if isDataOwner() && isIncomingOwner();
+      allow update: if (isDataOwner() && isIncomingOwner()) || isAdmin();
+      allow delete: if isDataOwner() || isAdmin();
     }
 
     match /barbers/{id} {
-      allow read: if isDataOwner();
+      allow read: if isDataOwner() || isAdmin();
       allow create: if isIncomingOwner();
-      allow update, delete: if isDataOwner();
+      allow update, delete: if isDataOwner() || isAdmin();
     }
 
     match /sales/{id} {
-      allow read: if isDataOwner();
+      allow read: if isDataOwner() || isAdmin();
       allow create: if isIncomingOwner();
-      allow update, delete: if isDataOwner() && isIncomingOwner();
+      allow update: if (isDataOwner() && isIncomingOwner()) || isAdmin();
+      allow delete: if isDataOwner() || isAdmin();
     }
 
     match /expenses/{id} {
-      allow read: if isDataOwner();
+      allow read: if isDataOwner() || isAdmin();
       allow create: if isIncomingOwner();
-      allow update, delete: if isDataOwner() && isIncomingOwner();
+      allow update: if (isDataOwner() && isIncomingOwner()) || isAdmin();
+      allow delete: if isDataOwner() || isAdmin();
     }
   }
 }

@@ -225,7 +225,6 @@ export default function Expenses() {
                   <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Descrição do Pagamento</Label>
                     <Input 
-                      placeholder="Ex: Aluguel da Unidade"
                       className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
                       value={formData.description} 
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })} 

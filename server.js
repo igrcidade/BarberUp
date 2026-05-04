@@ -4,9 +4,27 @@ import cors from "cors";
 import "dotenv/config";
 import path from "path";
 import { fileURLToPath } from "url";
+import admin from "firebase-admin";
+import fs from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Carregar configuração do Firebase para o Admin SDK
+const firebaseConfigPath = path.join(process.cwd(), "firebase-applet-config.json");
+let firebaseConfig = {};
+if (fs.existsSync(firebaseConfigPath)) {
+  firebaseConfig = JSON.parse(fs.readFileSync(firebaseConfigPath, "utf-8"));
+}
+
+// Inicializar Firebase Admin
+if (admin.apps.length === 0) {
+  admin.initializeApp({
+    projectId: firebaseConfig.projectId
+  });
+}
+
+const db = admin.firestore();
 
 async function startServer() {
   const app = express();
@@ -15,11 +33,7 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
 
-  // IMPORTANT: The MercadoPago token must come from process.env
-  // For production APIs, this should be valid.
-  const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
-
-  // Mercado Pago Create Preference API (Pagamento Único)
+  // Mercado Pago Create Preference API
   app.post("/api/create-checkout", async (req, res) => {
     try {
       const rawToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
@@ -29,7 +43,11 @@ async function startServer() {
 
       const token = rawToken.trim().replace(/\s/g, '');
       const { title, price, userId, email, planType } = req.body;
-      const appUrl = "https://tan-loris-476860.hostingersite.com";
+      
+      // Obter o host dinamicamente para back_urls
+      const protocol = req.headers['x-forwarded-proto'] || 'http';
+      const host = req.headers.host;
+      const appUrl = `${protocol}://${host}`;
 
       console.log(`📡 Criando Checkout para: ${title} (R$ ${price}) - Usuário: ${email}`);
 
@@ -49,7 +67,7 @@ async function startServer() {
         external_reference: userId,
         metadata: {
           user_id: userId,
-          plan_type: planType
+          plan_type: planType // mensal, semestral, anual
         },
         back_urls: {
           success: `${appUrl}/checkout/success`,
@@ -88,38 +106,21 @@ async function startServer() {
     }
   });
 
-  // Removido endpoints de assinatura antigos para manter o código limpo e funcional
-
   // WEBHOOK: Recebe notificações automáticas do Mercado Pago
   app.post("/api/webhook", express.json(), async (req, res) => {
     const { action, type, data } = req.body;
-    const webhookSecret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
+    const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
     
     console.log("🔔 WEBHOOK RECEBIDO:", JSON.stringify(req.body, null, 2));
 
-    // Validação de Segurança (x-signature)
-    const signature = req.headers['x-signature'];
-    if (webhookSecret && signature) {
-      console.log("🔒 Assinatura do Webhook detectada. Validando origem...");
-      // Em produção, aqui você compararia o HMAC SHA256 do payload com o signature usando o webhookSecret
-    }
-
     try {
-      // 1. Notificação de Assinatura (Preapproval)
-      if (type === "subscription_preapproval" || (action && action.includes("preapproval"))) {
-        const preapprovalId = (data && data.id) || req.body.resource;
-        console.log(`✅ NOTIFICAÇÃO DE ASSINATURA: ${preapprovalId}`);
-        // TODO: Atualizar status do usuário no banco de dados baseado no status da assinatura
-      } 
-      
-    // 2. Notificação de Pagamento (Planos Semestral/Anual - Checkout Pro)
-      else if (type === "payment" || (action && action.includes("payment"))) {
+      // Notificação de Pagamento (Checkout Pro)
+      if (type === "payment" || (action && action.includes("payment"))) {
         const paymentId = (data && data.id) || (req.body.resource && req.body.resource.split('/').pop());
-        console.log(`💰 [CHECKOUT PRO] NOTIFICAÇÃO DE PAGAMENTO: ${paymentId}`);
         
-        // Buscamos os detalhes do pagamento para validar o status
+        // Buscamos os detalhes do pagamento para validar o status e pegar os metadados
         const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-          headers: { "Authorization": `Bearer ${webhookSecret || process.env.MERCADOPAGO_ACCESS_TOKEN}` }
+          headers: { "Authorization": `Bearer ${token}` }
         });
         
         if (mpResponse.ok) {
@@ -127,13 +128,38 @@ async function startServer() {
           console.log(`📊 STATUS DO PAGAMENTO ${paymentId}: ${paymentData.status}`);
           
           if (paymentData.status === 'approved') {
-            const userId = paymentData.external_reference;
-            const planType = paymentData.description; // Ex: "Plano Semestral"
-            console.log(`✅ PAGAMENTO APROVADO para Usuário: ${userId} (${planType})`);
-            // TODO: Aqui você atualizaria o Firebase/Banco de dados liberando o acesso
+            const userId = paymentData.external_reference || (paymentData.metadata && paymentData.metadata.user_id);
+            const planType = (paymentData.metadata && paymentData.metadata.plan_type) || "mensal";
+            
+            if (!userId) {
+              console.error("❌ Erro: Payment aprovado mas userId não encontrado nos metadados/external_reference");
+              return res.status(200).send("OK but no user id");
+            }
+
+            // Calcular nova expiração
+            let daysToAdd = 30;
+            if (planType === 'semestral') daysToAdd = 180;
+            if (planType === 'anual') daysToAdd = 365;
+
+            const now = new Date();
+            const expirationDate = new Date();
+            expirationDate.setDate(now.getDate() + daysToAdd);
+
+            console.log(`✅ ATIVANDO PLANO: ${planType} para Usuário: ${userId}. Expiração: ${expirationDate.toISOString()}`);
+
+            // Atualizar Perfil no Firestore (Usando a coleção 'users' para consistência)
+            const profileRef = db.collection('users').doc(userId);
+            await profileRef.set({
+              activeSubscription: true,
+              subscriptionPlan: planType,
+              subscriptionStatus: 'active',
+              subscriptionEnd: expirationDate.toISOString(),
+              lastPaymentId: paymentId,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+
+            console.log("🔥 Banco de dados atualizado com sucesso!");
           }
-        } else {
-          console.error(`❌ Erro ao buscar detalhes do pagamento ${paymentId}`);
         }
       }
 
@@ -141,6 +167,29 @@ async function startServer() {
     } catch (error) {
       console.error("❌ Erro no Webhook:", error);
       res.status(500).send("Internal Server Error");
+    }
+  });
+
+  // ROTA ADMINISTRATIVA: Reset de Senha (Master Admin requisita)
+  app.post("/api/admin/reset-password", async (req, res) => {
+    const { email, newPassword, adminEmail } = req.body;
+
+    // Verificação de segurança adicional (Master Admin)
+    const masters = ['igor.cidade@hotmail.com', 'igrcidade@gmail.com'];
+    if (!masters.includes(adminEmail)) {
+      return res.status(403).json({ error: "Não autorizado" });
+    }
+
+    try {
+      const user = await admin.auth().getUserByEmail(email);
+      await admin.auth().updateUser(user.uid, {
+        password: newPassword
+      });
+      console.log(`🔐 Senha do usuário ${email} resetada por ${adminEmail}`);
+      res.json({ success: true, message: "Senha alterada com sucesso." });
+    } catch (error) {
+      console.error("❌ Erro ao resetar senha:", error);
+      res.status(500).json({ error: error.message });
     }
   });
 
@@ -154,7 +203,6 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    // Support history api fallback for SPAs in express v4
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });

@@ -32,7 +32,7 @@ export default function Services() {
   const [services, setServices] = useState<any[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [editingService, setEditingService] = useState<any>(null);
-  const [formData, setFormData] = useState({ name: '', price: '', category: 'Cabelo', duration: '30' });
+  const [formData, setFormData] = useState({ name: '', price: '', category: 'Cabelo', duration: '' });
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export default function Services() {
     }
     setIsOpen(false);
     setEditingService(null);
-    setFormData({ name: '', price: '', category: 'Cabelo', duration: '30' });
+    setFormData({ name: '', price: '', category: 'Cabelo', duration: '' });
   };
 
   const handleEdit = (service: any) => {
@@ -58,7 +58,7 @@ export default function Services() {
       name: service.name, 
       price: service.price.toString(), 
       category: service.category,
-      duration: service.duration || '30'
+      duration: service.duration?.toString() || ''
     });
     setIsOpen(true);
   };
@@ -95,7 +95,7 @@ export default function Services() {
           setIsOpen(open);
           if (!open) {
             setEditingService(null);
-            setFormData({ name: '', price: '', category: 'Cabelo', duration: '30' });
+            setFormData({ name: '', price: '', category: 'Cabelo', duration: '' });
           }
         }}>
           <DialogTrigger render={<Button disabled={!isActive} className="hidden md:flex barber-button-primary h-12 px-8 shadow-md" />}>
@@ -113,7 +113,6 @@ export default function Services() {
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Nome do Serviço</Label>
                   <Input 
-                    placeholder="Ex: Corte Degradê + Barba"
                     className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
                     value={formData.name} 
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
@@ -126,7 +125,6 @@ export default function Services() {
                     <Input 
                       type="number" 
                       step="0.01" 
-                      placeholder="50,00"
                       className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-primary font-bold text-lg"
                       value={formData.price} 
                       onChange={(e) => setFormData({ ...formData, price: e.target.value })} 
@@ -137,7 +135,6 @@ export default function Services() {
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Duração (Min)</Label>
                     <Input 
                       type="number" 
-                      placeholder="30"
                       className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
                       value={formData.duration} 
                       onChange={(e) => setFormData({ ...formData, duration: e.target.value })} 

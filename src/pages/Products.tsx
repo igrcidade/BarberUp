@@ -32,7 +32,7 @@ export default function Products() {
   const [products, setProducts] = useState<any[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
-  const [formData, setFormData] = useState({ name: '', brand: '', price: '', stock: '', category: 'Cabelo', minStock: '5' });
+  const [formData, setFormData] = useState({ name: '', brand: '', price: '', stock: '', category: 'Cabelo', minStock: '' });
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export default function Products() {
       ...formData, 
       price: parseFloat(formData.price),
       stock: parseInt(formData.stock),
-      minStock: parseInt(formData.minStock)
+      minStock: parseInt(formData.minStock) || 0
     };
     if (editingProduct) {
       await updateDocument('products', editingProduct.id, data);
@@ -54,7 +54,7 @@ export default function Products() {
     }
     setIsOpen(false);
     setEditingProduct(null);
-    setFormData({ name: '', brand: '', price: '', stock: '', category: 'Cabelo', minStock: '5' });
+    setFormData({ name: '', brand: '', price: '', stock: '', category: 'Cabelo', minStock: '' });
   };
 
   const handleEdit = (product: any) => {
@@ -65,7 +65,7 @@ export default function Products() {
       price: product.price.toString(), 
       stock: product.stock.toString(),
       category: product.category,
-      minStock: (product.minStock || 5).toString()
+      minStock: product.minStock?.toString() || ''
     });
     setIsOpen(true);
   };
@@ -103,7 +103,7 @@ export default function Products() {
           setIsOpen(open);
           if (!open) {
             setEditingProduct(null);
-            setFormData({ name: '', brand: '', price: '', stock: '', category: 'Cabelo', minStock: '5' });
+            setFormData({ name: '', brand: '', price: '', stock: '', category: 'Cabelo', minStock: '' });
           }
         }}>
           <DialogTrigger render={<Button disabled={!isActive} className="hidden md:flex barber-button-primary h-12 px-8 shadow-md" />}>
@@ -122,7 +122,6 @@ export default function Products() {
                   <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Nome do Produto</Label>
                     <Input 
-                      placeholder="Ex: Pomada Efeito Matte 150g"
                       className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
                       value={formData.name} 
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
@@ -132,7 +131,6 @@ export default function Products() {
                   <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Marca</Label>
                     <Input 
-                      placeholder="Ex: Fox for Men"
                       className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
                       value={formData.brand} 
                       onChange={(e) => setFormData({ ...formData, brand: e.target.value })} 
@@ -145,7 +143,6 @@ export default function Products() {
                     <Input 
                       type="number" 
                       step="0.01" 
-                      placeholder="45,00"
                       className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-primary font-bold text-lg"
                       value={formData.price} 
                       onChange={(e) => setFormData({ ...formData, price: e.target.value })} 
@@ -156,7 +153,6 @@ export default function Products() {
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Qtd. Estoque</Label>
                     <Input 
                       type="number" 
-                      placeholder="10"
                       className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
                       value={formData.stock} 
                       onChange={(e) => setFormData({ ...formData, stock: e.target.value })} 
@@ -183,10 +179,10 @@ export default function Products() {
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Alerta Mínimo</Label>
                     <Input 
                       type="number" 
-                      placeholder="5"
                       className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
                       value={formData.minStock} 
                       onChange={(e) => setFormData({ ...formData, minStock: e.target.value })} 
+                      required
                     />
                   </div>
                 </div>
@@ -368,7 +364,7 @@ export default function Products() {
           className="md:hidden fixed bottom-[88px] right-4 h-14 w-14 rounded-full shadow-xl z-50 flex items-center justify-center p-0"
           onClick={() => {
             setEditingProduct(null);
-            setFormData({ name: '', price: '0', category: '', duration: '', stock: '0', minStock: '5', brand: '' });
+            setFormData({ name: '', brand: '', price: '', stock: '', category: '', minStock: '' });
             setIsOpen(true);
           }}
           disabled={!isActive}

@@ -66,7 +66,7 @@ export default function Sales() {
   const [barberSearch, setBarberSearch] = useState('');
   const [isClientOpen, setIsClientOpen] = useState(false);
   const [isBarberOpen, setIsBarberOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'services' | 'products'>('services');
+  const [activeTab, setActiveTab] = useState<'services' | 'products' | 'history'>('services');
 
   const [editingSale, setEditingSale] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -420,6 +420,14 @@ export default function Sales() {
             >
               Produtos
             </Button>
+            <Button 
+              variant={activeTab === 'history' ? "secondary" : "ghost"} 
+              size="sm" 
+              className="rounded-lg px-6 h-full text-xs font-bold uppercase tracking-wider"
+              onClick={() => setActiveTab('history')}
+            >
+              Histórico
+            </Button>
           </div>
         </div>
 
@@ -490,6 +498,83 @@ export default function Sales() {
                   </motion.button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'history' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 px-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <ShoppingCart className="w-4 h-4 text-primary" />
+                </div>
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">Últimas Vendas</h3>
+              </div>
+              <Card className="border-border bg-card shadow-sm overflow-hidden rounded-2xl">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40 hover:bg-transparent border-border">
+                        <TableHead className="text-[10px] font-bold uppercase text-muted-foreground pl-6">Data</TableHead>
+                        <TableHead className="text-[10px] font-bold uppercase text-muted-foreground">Cliente</TableHead>
+                        <TableHead className="text-[10px] font-bold uppercase text-muted-foreground">Método</TableHead>
+                        <TableHead className="text-[10px] font-bold uppercase text-muted-foreground text-right">Total</TableHead>
+                        <TableHead className="text-[10px] font-bold uppercase text-muted-foreground text-right pr-6">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedSales.slice(0, 50).map((sale) => {
+                        const sDate = sale.createdAt;
+                        const dateText = sDate ? (sDate.toDate ? format(sDate.toDate(), 'dd/MM HH:mm') : format(parseISO(sDate), 'dd/MM HH:mm')) : 'N/A';
+                        return (
+                          <TableRow key={sale.id} className="border-border hover:bg-muted/10">
+                            <TableCell className="text-[11px] font-bold text-muted-foreground pl-6 uppercase">
+                              {dateText}
+                            </TableCell>
+                            <TableCell className="font-bold text-xs uppercase tracking-tight text-foreground">
+                              {sale.clientName}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-[8px] font-bold bg-muted/50 border-border uppercase">
+                                {sale.paymentMethod}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-sm text-primary tracking-tight">
+                              R$ {sale.total.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-right pr-6">
+                              <div className="flex justify-end gap-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 text-muted-foreground hover:bg-muted rounded-lg"
+                                  onClick={() => handleEditSale(sale)}
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg"
+                                  onClick={() => setDeleteConfirm(sale.id)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {sortedSales.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-10 text-muted-foreground italic text-xs">
+                            Nenhuma venda registrada ainda.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
             </div>
           )}
         </div>
@@ -685,13 +770,11 @@ export default function Sales() {
                   onChange={(e) => setNewClientName(e.target.value)} 
                   required 
                   className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
-                  placeholder="Ex: Luan Souza"
                 />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Telefone / WhatsApp</Label>
                 <Input 
-                  placeholder="(00) 00000-0000"
                   value={newClientPhone} 
                   onChange={(e) => setNewClientPhone(e.target.value)} 
                   className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"

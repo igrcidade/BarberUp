@@ -4,8 +4,11 @@
  */
 
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/auth';
+import { auth } from './lib/firebase';
+import { ShieldCheck } from 'lucide-react';
+import { Button } from './components/ui/button';
 import { ThemeProvider } from './components/ThemeProvider';
 import { Toaster } from 'sonner';
 import Landing from './pages/Landing';
@@ -27,8 +30,46 @@ import Barbers from './pages/Barbers';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useAuth();
+  const { user, profile, isAdmin, isActive, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
+
+  // Se for Master Admin, acesso total sempre
+  if (isAdmin) return <>{children}</>;
+
+  // Se o status for bloqueado, trava total
+  if (profile?.subscriptionStatus === 'blocked') {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background p-4 text-center">
+        <div className="max-w-md space-y-6">
+          <div className="w-20 h-20 bg-destructive/10 rounded-3xl flex items-center justify-center text-destructive mx-auto shadow-2xl">
+            <ShieldCheck className="w-10 h-10" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-3xl font-black uppercase tracking-tighter text-white">ACESSO BLOQUEADO</h1>
+            <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground leading-relaxed">
+              Sua conta foi desativada pela administração. Entre em contato com o suporte para regularizar sua situação.
+            </p>
+          </div>
+          <Button 
+            className="w-full barber-button-primary h-12 rounded-xl font-black uppercase tracking-widest"
+            onClick={() => auth.signOut()}
+          >
+            VOLTAR AO INÍCIO
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Se não estiver ativo (ex: expirado), só pode acessar a página de assinatura
+  const isSubscriptionPath = location.pathname.includes('/subscription') || location.pathname.includes('/checkout');
+  if (!isActive && !isSubscriptionPath) {
+    return <Navigate to="/app/subscription" replace />;
+  }
+
   return <>{children}</>;
 };
 

@@ -75,8 +75,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/comp
 import { useAuth } from '../lib/auth';
 import { toast } from 'sonner';
 
-const getMenuItems = (isAdmin: boolean) => {
-  const items = [
+const getMenuItems = (isAdmin: boolean, isActive: boolean) => {
+  const allItems = [
     { title: 'Vender', icon: ShoppingCart, path: '/app/sales', highlight: true },
     { title: 'Dashboard', icon: LayoutDashboard, path: '/app/dashboard' },
     { title: 'Barbeiros', icon: Users, path: '/app/barbers' },
@@ -89,6 +89,15 @@ const getMenuItems = (isAdmin: boolean) => {
     { title: 'Assinatura', icon: CreditCard, path: '/app/subscription' }
   ];
 
+  // Se não estiver ativo (ex: expirado) e não for admin, limita o menu
+  if (!isActive && !isAdmin) {
+    return [
+      { title: 'Minha Conta', icon: UserIcon, path: '/app/account' },
+      { title: 'Assinatura', icon: CreditCard, path: '/app/subscription' }
+    ];
+  }
+
+  const items = [...allItems];
   if (isAdmin) {
     items.push({ title: 'Admin Master', icon: ShieldCheck, path: '/app/master-admin', highlight: false });
   }
@@ -102,7 +111,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const menuItems = getMenuItems(isAdmin);
+  const menuItems = getMenuItems(isAdmin, isActive);
 
   const handleLogout = async () => {
     await signOut(auth);

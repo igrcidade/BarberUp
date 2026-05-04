@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Plus, Users, Search, Edit2, Mail, Scissors, User as UserIcon, Trash2 } from 'lucide-react';
-import { addDocument, updateDocument, subscribeToCollection } from '@/lib/db';
+import { addDocument, updateDocument, deleteDocument, subscribeToCollection } from '@/lib/db';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
 
@@ -15,7 +15,7 @@ export default function Barbers() {
   const [barbers, setBarbers] = useState<any[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [editingBarber, setEditingBarber] = useState<any>(null);
-  const [formData, setFormData] = useState({ name: '', email: '', commissionService: '50', commissionProduct: '10', active: true });
+  const [formData, setFormData] = useState({ name: '', email: '', commissionService: '', commissionProduct: '', active: true });
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -51,11 +51,36 @@ export default function Barbers() {
       }
       setIsOpen(false);
       setEditingBarber(null);
-      setFormData({ name: '', email: '', commissionService: '50', commissionProduct: '10', active: true });
+      setFormData({ name: '', email: '', commissionService: '', commissionProduct: '', active: true });
     } catch (e) {
       console.error(e);
       toast.error('Erro ao salvar barbeiro');
     }
+  };
+
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteName, setDeleteName] = useState<string>('');
+
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    setIsDeleting(true);
+    try {
+      await deleteDocument('barbers', deleteId);
+      toast.success('Barbeiro removido com sucesso!');
+      setDeleteId(null);
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao remover barbeiro');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const confirmDelete = (barber: any) => {
+    setDeleteId(barber.id);
+    setDeleteName(barber.name);
   };
 
   const handleEdit = (barber: any) => {
@@ -63,8 +88,8 @@ export default function Barbers() {
     setFormData({
       name: barber.name,
       email: barber.email || '',
-      commissionService: barber.commissionService?.toString() || barber.commission?.toString() || '0',
-      commissionProduct: barber.commissionProduct?.toString() || '0',
+      commissionService: barber.commissionService?.toString() || barber.commission?.toString() || '',
+      commissionProduct: barber.commissionProduct?.toString() || '',
       active: barber.active ?? true,
     });
     setIsOpen(true);
@@ -87,7 +112,7 @@ export default function Barbers() {
           setIsOpen(open);
           if (!open) {
             setEditingBarber(null);
-            setFormData({ name: '', email: '', commissionService: '50', commissionProduct: '10', active: true });
+            setFormData({ name: '', email: '', commissionService: '', commissionProduct: '', active: true });
           }
         }}>
           <DialogTrigger render={<Button disabled={!isActive} className="hidden md:flex barber-button-primary h-12 px-8 shadow-md" />}>
@@ -106,7 +131,6 @@ export default function Barbers() {
                   <div className="relative">
                     <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input 
-                      placeholder="Ex: João Silva" 
                       className="pl-11 h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold text-sm"
                       value={formData.name} 
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
@@ -120,7 +144,6 @@ export default function Barbers() {
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input 
                       type="email"
-                      placeholder="joao@exemplo.com" 
                       className="pl-11 h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold text-sm"
                       value={formData.email} 
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })} 
@@ -133,20 +156,20 @@ export default function Barbers() {
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Com. Serviços (%)</Label>
                     <Input 
                       type="number"
-                      placeholder="50" 
                       className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold text-sm"
                       value={formData.commissionService} 
                       onChange={(e) => setFormData({ ...formData, commissionService: e.target.value })} 
+                      required
                     />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Com. Produtos (%)</Label>
                     <Input 
                       type="number"
-                      placeholder="10" 
                       className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold text-sm"
                       value={formData.commissionProduct} 
                       onChange={(e) => setFormData({ ...formData, commissionProduct: e.target.value })} 
+                      required
                     />
                   </div>
                 </div>
@@ -222,15 +245,25 @@ export default function Barbers() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-8 text-xs font-bold text-muted-foreground hover:text-foreground"
-                      onClick={() => handleEdit(barber)}
-                    >
-                      <Edit2 className="w-3.5 h-3.5 mr-2" />
-                      Editar
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 text-xs font-bold text-muted-foreground hover:text-foreground"
+                        onClick={() => handleEdit(barber)}
+                      >
+                        <Edit2 className="w-3.5 h-3.5 mr-2" />
+                        Editar
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 text-xs font-bold text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => confirmDelete(barber)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -254,9 +287,12 @@ export default function Barbers() {
                     </span>
                   </div>
                 </div>
-                <div className="flex bg-muted/50 rounded-lg">
+                <div className="flex bg-muted/50 rounded-lg gap-1">
                   <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-xl" onClick={() => handleEdit(barber)}>
                     <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive rounded-xl hover:bg-destructive/10" onClick={() => confirmDelete(barber)}>
+                    <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
@@ -283,13 +319,51 @@ export default function Barbers() {
           className="md:hidden fixed bottom-[88px] right-4 h-14 w-14 rounded-full shadow-xl z-50 flex items-center justify-center p-0"
           onClick={() => {
             setEditingBarber(null);
-            setFormData({ name: '', phone: '', serviceCommission: '', productCommission: '', active: true });
+            setFormData({ name: '', email: '', commissionService: '', commissionProduct: '', active: true });
             setIsOpen(true);
           }}
           disabled={!isActive}
         >
           <Plus className="w-6 h-6" />
         </Button>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+          <DialogContent className="sm:max-w-[400px] bg-card border-border/50">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground">
+                Confirmar Exclusão
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6 mt-4">
+              <div className="p-4 bg-destructive/10 rounded-xl border border-destructive/20 text-center">
+                <Trash2 className="w-12 h-12 text-destructive mx-auto mb-3" />
+                <p className="text-sm font-bold text-foreground">
+                  Deseja realmente excluir o barbeiro <span className="text-destructive underline">{deleteName}</span>?
+                </p>
+                <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground mt-2">
+                  Esta ação não pode ser desfeita.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setDeleteId(null)}
+                  className="flex-1 h-12 rounded-xl font-bold uppercase tracking-wider text-xs border-border hover:bg-muted"
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="flex-1 h-12 rounded-xl bg-destructive hover:bg-destructive/90 text-white font-black uppercase tracking-wider text-xs shadow-md disabled:opacity-50"
+                >
+                  {isDeleting ? 'Excluindo...' : 'Excluir'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </Card>
     </div>
   );

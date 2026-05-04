@@ -178,14 +178,12 @@ export default function Clients() {
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
                     required 
                     className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
-                    placeholder="Ex: Luan Souza"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone" className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">WhatsApp / Telefone</Label>
                   <Input 
                     id="phone" 
-                    placeholder="(00) 00000-0000"
                     value={formData.phone} 
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })} 
                     className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
@@ -197,7 +195,6 @@ export default function Clients() {
                     id="notes" 
                     value={formData.notes} 
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })} 
-                    placeholder="Preferências de corte, café, etc..."
                     className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground text-sm font-medium"
                   />
                 </div>
