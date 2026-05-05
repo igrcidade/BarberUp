@@ -5,6 +5,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import admin from 'firebase-admin';
+import { getFirestore } from 'firebase-admin/firestore';
+import fs from 'fs';
 
 dotenv.config();
 
@@ -12,17 +14,33 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Initialize Firebase Admin
+let db;
 try {
+  const fbConfigPath = path.resolve(__dirname, 'firebase-applet-config.json');
+  let fbConfig = null;
+  if (fs.existsSync(fbConfigPath)) {
+    fbConfig = JSON.parse(fs.readFileSync(fbConfigPath, 'utf8'));
+  }
+
   if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
     });
+  } else if (fbConfig) {
+    admin.initializeApp({ projectId: fbConfig.projectId });
   } else if (process.env.VITE_FIREBASE_PROJECT_ID) {
     admin.initializeApp({ projectId: process.env.VITE_FIREBASE_PROJECT_ID });
   } else {
     admin.initializeApp();
   }
+  
+  if (fbConfig && fbConfig.firestoreDatabaseId) {
+    db = getFirestore(undefined, fbConfig.firestoreDatabaseId);
+  } else {
+    db = getFirestore();
+  }
+
   console.log('✅ Firebase Admin initialized');
 } catch (error) {
   console.error('❌ Firebase Admin init error:', error);
@@ -129,14 +147,14 @@ app.post('/api/admin/delete-user', async (req, res) => {
     }
 
     // 2. Delete user document from Firestore
-    await admin.firestore().collection('users').doc(userId).delete();
+    await db.collection('users').doc(userId).delete();
     
     // 3. Delete user data across collections
     const collectionsToClean = ['profiles', 'services', 'products', 'clients', 'sales', 'expenses', 'barbers'];
     for (const coll of collectionsToClean) {
-      const snapshot = await admin.firestore().collection(coll).where('userId', '==', userId).get();
+      const snapshot = await db.collection(coll).where('userId', '==', userId).get();
       if (!snapshot.empty) {
-        const batch = admin.firestore().batch();
+        const batch = db.batch();
         snapshot.docs.forEach((doc) => {
           batch.delete(doc.ref);
         });
@@ -180,7 +198,7 @@ app.post('/api/webhooks/mercadopago', async (req, res) => {
 
                 const newEnd = addDays(new Date(), daysToAdd);
 
-                await admin.firestore().collection('users').doc(userId).update({
+                await db.collection('users').doc(userId).update({
                   subscriptionStatus: 'active',
                   subscriptionPlan: planType || 'mensal',
                   subscriptionEnd: newEnd.toISOString()
