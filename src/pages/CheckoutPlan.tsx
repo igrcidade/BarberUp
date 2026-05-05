@@ -44,16 +44,15 @@ export default function CheckoutPlan() {
       });
 
       const data = await response.json();
-      
-      if (response.ok && data.init_point) {
+      if (data.init_point) {
+        console.log('Redirecionando para MercadoPago checkout:', data.init_point);
         window.location.href = data.init_point;
-        return;
+      } else {
+        alert('Erro ao gerar pagamento');
       }
-      
-      throw data;
-    } catch (e: any) {
-      console.error('Payment Error:', e);
-      alert(e.message || 'Erro ao processar pagamento. Tente novamente.');
+    } catch (error) {
+      console.error('Erro no checkout:', error);
+      alert('Ocorreu um erro ao processar o pagamento.');
     } finally {
       setLoading(false);
     }

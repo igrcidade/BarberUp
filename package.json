@@ -3,16 +3,12 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "main": "index.js",
-  "engines": {
-    "node": ">=18.0.0"
-  },
   "scripts": {
-    "dev": "tsx index.js",
+    "dev": "tsx server.js",
+    "vite:dev": "vite",
     "build": "vite build",
-    "start": "node index.js",
+    "start": "node server.js",
     "preview": "vite preview",
-    "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

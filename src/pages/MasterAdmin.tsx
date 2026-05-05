@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { collection, getDocs, doc, updateDoc, deleteDoc, onSnapshot, writeBatch, query, where } from 'firebase/firestore';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth';
 import { Navigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,6 +28,7 @@ export default function MasterAdmin() {
   // Detalhes do Usuário Selecionado
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<any | null>(null);
   const [newTempPassword, setNewTempPassword] = useState('');
 
   const [errorMsg, setErrorMsg] = useState('');
@@ -131,15 +133,37 @@ export default function MasterAdmin() {
     }
   };
 
-  const handleDeleteUser = async (userId: string, email: string) => {
-    if (!confirm(`TEM CERTEZA? Esta ação irá deletar PERMANENTEMENTE a conta ${email} e todos os seus dados vinculados. Esta ação não pode ser desfeita.`)) return;
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    const { id: userId, email } = userToDelete;
     
     try {
       setLoading(true);
-      await deleteDoc(doc(db, 'users', userId));
+      
+      const batch = writeBatch(db);
+
+      // Limpar todas as colecoes relacionadas ao usuário
+      const collectionsToClean = ['services', 'products', 'clients', 'sales', 'expenses', 'barbers'];
+      for (const coll of collectionsToClean) {
+        const q = query(collection(db, coll), where('userId', '==', userId));
+        const snapshot = await getDocs(q);
+        snapshot.forEach((docSnap) => {
+          batch.delete(docSnap.ref);
+        });
+      }
+
+      // Deletar o perfil do usuário
+      batch.delete(doc(db, 'profiles', userId));
+
+      // Por fim, deletar o documento principal do usuário
+      batch.delete(doc(db, 'users', userId));
+
+      await batch.commit();
+
+      toast.success(`Conta ${email} e seus dados removidos com sucesso.`);
+      setUserToDelete(null);
       setUsers(prev => prev.filter(u => u.id !== userId));
-      toast.success(`Conta ${email} removida com sucesso.`);
-    } catch (e) {
+    } catch (e: any) {
       console.error('Erro ao deletar usuário:', e);
       toast.error('Erro ao remover usuário. Verifique as permissões.');
     } finally {
@@ -404,7 +428,7 @@ export default function MasterAdmin() {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      onClick={() => handleDeleteUser(u.id, u.email)}
+                      onClick={() => setUserToDelete(u)}
                       className="h-10 w-10 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -592,6 +616,28 @@ export default function MasterAdmin() {
              <Button variant="ghost" onClick={() => setIsResetPasswordOpen(false)} className="rounded-xl h-12 uppercase font-black text-[10px] tracking-widest flex-1">CANCELAR</Button>
              <Button onClick={handleResetPassword} disabled={!newTempPassword} className="barber-button-primary h-12 flex-[2] rounded-xl font-black tracking-widest uppercase">
                 CONCLUIR RESET
+             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Exclusão de Usuário (Confirm) */}
+      <Dialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+        <DialogContent className="max-w-md bg-card border-none rounded-3xl p-8 shadow-4xl">
+          <DialogHeader className="space-y-3">
+             <div className="h-12 w-12 bg-destructive/10 rounded-xl flex items-center justify-center text-destructive mb-2">
+                <Trash2 className="w-6 h-6" />
+             </div>
+            <DialogTitle className="text-2xl font-black uppercase text-foreground tracking-tighter">EXCLUIR USUÁRIO</DialogTitle>
+            <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+              TEM CERTEZA? Esta ação irá deletar PERMANENTEMENTE a conta <strong>{userToDelete?.email}</strong> e todos os seus dados vinculados (clientes, finanças, etc). Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex gap-4 mt-8">
+             <Button variant="ghost" onClick={() => setUserToDelete(null)} className="rounded-xl h-12 uppercase font-black text-[10px] tracking-widest flex-1">CANCELAR</Button>
+             <Button onClick={handleDeleteUser} disabled={loading} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground h-12 flex-[2] rounded-xl font-black tracking-widest uppercase">
+                {loading ? 'EXCLUINDO...' : 'CONCLUIR EXCLUSÃO'}
              </Button>
           </DialogFooter>
         </DialogContent>
