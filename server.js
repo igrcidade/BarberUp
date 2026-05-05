@@ -13,7 +13,14 @@ const __dirname = path.dirname(__filename);
 
 // Initialize Firebase Admin
 try {
-  admin.initializeApp();
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+  } else {
+    admin.initializeApp();
+  }
   console.log('✅ Firebase Admin initialized');
 } catch (error) {
   console.error('❌ Firebase Admin init error:', error);
@@ -154,7 +161,42 @@ app.post('/api/webhooks/mercadopago', async (req, res) => {
     console.log('Webhook Received:', req.body);
     const paymentId = req.body?.data?.id;
     if (req.body.type === 'payment' && paymentId) {
-       // Ideally verify payment status using the SDK
+       if (client) {
+         try {
+           const { Payment } = require('mercadopago');
+           const payment = new Payment(client);
+           const paymentData = await payment.get({ id: paymentId });
+           
+           if (paymentData && paymentData.status === 'approved') {
+             const userId = paymentData.metadata?.user_id || paymentData.external_reference;
+             const planType = paymentData.metadata?.plan_type;
+             
+             if (userId) {
+                const addDays = (date, days) => {
+                  const result = new Date(date);
+                  result.setDate(result.getDate() + days);
+                  return result;
+                };
+                
+                let daysToAdd = 30;
+                if (planType === 'mensal') daysToAdd = 30;
+                if (planType === 'semestral') daysToAdd = 180;
+                if (planType === 'anual') daysToAdd = 365;
+
+                const newEnd = addDays(new Date(), daysToAdd);
+
+                await admin.firestore().collection('users').doc(userId).update({
+                  subscriptionStatus: 'active',
+                  subscriptionPlan: planType || 'mensal',
+                  subscriptionEnd: newEnd.toISOString()
+                });
+                console.log(`User ${userId} subscription updated to active until ${newEnd.toISOString()}`);
+             }
+           }
+         } catch(paymentErr) {
+           console.error('Error fetching payment:', paymentErr);
+         }
+       }
        res.status(200).send('OK');
     } else {
        res.status(200).send('OK');

@@ -112,7 +112,7 @@ export default function Landing() {
   const plans = [
     {
       name: 'Mensal',
-      price: '79,90',
+      price: '1,00',
       period: '/mês',
       description: 'Ideal para quem está começando agora.',
       features: ['Gestão de Clientes', 'Controle Financeiro', 'PDV Completo', 'Até 2 Profissionais'],
@@ -121,23 +121,23 @@ export default function Landing() {
     },
     {
       name: 'Anual',
-      price: '59,90',
+      price: '0,90',
       period: '/mês',
       description: 'O melhor custo-benefício para sua elite.',
       features: ['Tudo do Mensal', 'Gestão de Estoque', 'Relatórios de Retenção', 'Profissionais Ilimitados', 'Suporte Prioritário'],
       cta: 'Assinar Plano Anual',
       popular: true,
-      billed: 'Valor Total: R$ 718,80'
+      billed: 'Valor Total: R$ 0,90'
     },
     {
       name: 'Semestral',
-      price: '69,90',
+      price: '0,95',
       period: '/mês',
       description: 'Equilíbrio perfeito para seu crescimento.',
       features: ['Tudo do Mensal', 'Gestão de Estoque', 'Até 5 Profissionais', 'Suporte via WhatsApp'],
       cta: 'Assinar Plano Semestral',
       popular: false,
-      billed: 'Valor Total: R$ 419,40'
+      billed: 'Valor Total: R$ 0,95'
     }
   ];
 
@@ -625,18 +625,25 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="py-12 px-6 lg:px-8 border-t border-white/5 bg-black">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Scissors className="w-4 h-4 text-orange-500" />
-            <span className="font-bold text-lg">BarberUp</span>
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div className="flex flex-col gap-4 max-w-2xl">
+            <div className="flex items-center gap-2">
+              <Scissors className="w-4 h-4 text-orange-500" />
+              <span className="font-bold text-lg">BarberUp</span>
+            </div>
+            <p className="text-[10px] text-zinc-500 uppercase tracking-widest leading-relaxed font-medium">
+              Este sistema é uma ferramenta de gestão financeira e operacional, destinada ao controle interno da barbearia. Não se trata de um sistema fiscal e não realiza emissão de notas fiscais ou qualquer documento fiscal eletrônico. A responsabilidade pela emissão de notas fiscais e cumprimento das obrigações legais permanece exclusivamente com o usuário.
+            </p>
           </div>
-          <div className="flex gap-6">
-            <button type="button" onClick={() => setShowPrivacy(true)} className="text-[10px] font-bold text-zinc-500 hover:text-white uppercase tracking-widest">Privacidade</button>
-            <button type="button" onClick={() => setShowTerms(true)} className="text-[10px] font-bold text-zinc-500 hover:text-white uppercase tracking-widest">Termos e Condições</button>
-            <a href="#" className="text-[10px] font-bold text-zinc-500 hover:text-white uppercase tracking-widest">Contato</a>
-          </div>
-          <div className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest text-center md:text-right">
-            © {new Date().getFullYear()} BarberUp. Todos os direitos reservados.
+          <div className="flex flex-col items-start md:items-end gap-6 w-full md:w-auto">
+            <div className="flex gap-6">
+              <button type="button" onClick={() => setShowPrivacy(true)} className="text-[10px] font-bold text-zinc-500 hover:text-white uppercase tracking-widest">Privacidade</button>
+              <button type="button" onClick={() => setShowTerms(true)} className="text-[10px] font-bold text-zinc-500 hover:text-white uppercase tracking-widest">Termos e Condições</button>
+              <a href="#" className="text-[10px] font-bold text-zinc-500 hover:text-white uppercase tracking-widest">Contato</a>
+            </div>
+            <div className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest text-left md:text-right">
+              © {new Date().getFullYear()} BarberUp. Todos os direitos reservados.
+            </div>
           </div>
         </div>
       </footer>
@@ -653,23 +660,76 @@ export default function Landing() {
           <div className="space-y-6 text-sm text-zinc-300 leading-relaxed">
             <section>
               <h3 className="text-orange-500 font-bold uppercase tracking-tight mb-2">1. Aceitação dos Termos</h3>
-              <p>Ao acessar e utilizar o sistema BarberUp, você concorda em cumprir e estar vinculado a estes Termos de Uso. Se você não concordar com qualquer parte destes termos, não deverá utilizar nossos serviços.</p>
+              <p>Ao acessar, cadastrar-se ou utilizar a plataforma, o usuário declara que leu, compreendeu e concorda integralmente com estes Termos de Uso.</p>
             </section>
             <section>
-              <h3 className="text-orange-500 font-bold uppercase tracking-tight mb-2">2. Uso do Serviço</h3>
-              <p>O BarberUp fornece ferramentas de gestão exclusivas para barbearias. Você é responsável por manter a confidencialidade das informações da sua conta e de todas as atividades que ocorrem sob a sua senha.</p>
+              <h3 className="text-orange-500 font-bold uppercase tracking-tight mb-2">2. Objeto do Serviço</h3>
+              <p>A plataforma consiste em um sistema SaaS (Software como Serviço) destinado à gestão financeira e operacional de barbearias, incluindo controle de receitas, despesas, clientes, barbeiros e relatórios.</p>
+              <p className="mt-2">A contratação concede ao usuário uma licença de uso limitada, não exclusiva e intransferível, sem transferência de propriedade intelectual.</p>
             </section>
             <section>
-              <h3 className="text-orange-500 font-bold uppercase tracking-tight mb-2">3. Dados e Privacidade</h3>
-              <p>A coleta e uso de dados pessoais estão descritos na nossa Política de Privacidade. Ao preencher dados de clientes, o usuário garante ter o consentimento necessário dos mesmos.</p>
+              <h3 className="text-orange-500 font-bold uppercase tracking-tight mb-2">3. Natureza do Serviço</h3>
+              <p>O sistema possui caráter exclusivamente gerencial e não substitui sistemas fiscais ou contábeis, não realizando emissão de notas fiscais ou cumprimento automático de obrigações legais.</p>
+              <p className="mt-2">O usuário é integralmente responsável pelo cumprimento de suas obrigações fiscais e tributárias.</p>
             </section>
             <section>
-              <h3 className="text-orange-500 font-bold uppercase tracking-tight mb-2">4. Pagamentos e Assinaturas</h3>
-              <p>O uso além do período de teste gratuito exige o pagamento de uma assinatura. A inadimplência poderá resultar na suspensão temporária do acesso à plataforma.</p>
+              <h3 className="text-orange-500 font-bold uppercase tracking-tight mb-2">4. Cadastro e Responsabilidade do Usuário</h3>
+              <p>O usuário compromete-se a:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Fornecer informações verdadeiras e atualizadas</li>
+                <li>Manter a confidencialidade de seus dados de acesso</li>
+                <li>Não compartilhar sua conta com terceiros</li>
+              </ul>
+              <p className="mt-2">O usuário é responsável por todas as ações realizadas em sua conta.</p>
             </section>
             <section>
-              <h3 className="text-orange-500 font-bold uppercase tracking-tight mb-2">5. Modificações dos Termos</h3>
-              <p>O BarberUp reserva-se o direito de alterar estes termos a qualquer momento, notificando seus usuários sobre mudanças significativas através do e-mail cadastrado.</p>
+              <h3 className="text-orange-500 font-bold uppercase tracking-tight mb-2">5. Uso Indevido</h3>
+              <p>É proibido:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Utilizar o sistema para atividades ilegais</li>
+                <li>Inserir dados falsos ou fraudulentos</li>
+                <li>Violar direitos de terceiros</li>
+              </ul>
+              <p className="mt-2">O descumprimento poderá resultar em suspensão ou cancelamento da conta.</p>
+            </section>
+            <section>
+              <h3 className="text-orange-500 font-bold uppercase tracking-tight mb-2">6. Pagamentos e Assinatura</h3>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>O acesso ao sistema pode depender de pagamento recorrente</li>
+                <li>O não pagamento pode resultar na suspensão do acesso</li>
+                <li>Valores e planos podem ser alterados mediante aviso prévio</li>
+              </ul>
+            </section>
+            <section>
+              <h3 className="text-orange-500 font-bold uppercase tracking-tight mb-2">7. Disponibilidade do Serviço</h3>
+              <p>A plataforma será disponibilizada conforme sua capacidade técnica, podendo ocorrer interrupções para manutenção, atualizações ou fatores externos.</p>
+            </section>
+            <section>
+              <h3 className="text-orange-500 font-bold uppercase tracking-tight mb-2">8. Limitação de Responsabilidade</h3>
+              <p>A empresa não se responsabiliza por:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Decisões financeiras tomadas com base nos dados do sistema</li>
+                <li>Perdas decorrentes de uso inadequado</li>
+                <li>Problemas causados por terceiros, falhas de internet ou dispositivos do usuário</li>
+              </ul>
+              <p className="mt-2">Também não se responsabiliza por falhas relacionadas ao ambiente do usuário, como equipamentos ou segurança local.</p>
+            </section>
+            <section>
+              <h3 className="text-orange-500 font-bold uppercase tracking-tight mb-2">9. Propriedade Intelectual</h3>
+              <p>Todo o sistema, incluindo código, design, marca e funcionalidades, é de propriedade exclusiva da empresa, sendo proibida a cópia, reprodução ou distribuição sem autorização.</p>
+            </section>
+            <section>
+              <h3 className="text-orange-500 font-bold uppercase tracking-tight mb-2">10. Cancelamento</h3>
+              <p>O usuário pode cancelar sua assinatura a qualquer momento.</p>
+              <p className="mt-2">Após o cancelamento, o acesso poderá ser suspenso ao final do período contratado.</p>
+            </section>
+            <section>
+              <h3 className="text-orange-500 font-bold uppercase tracking-tight mb-2">11. Alterações dos Termos</h3>
+              <p>Estes Termos podem ser atualizados a qualquer momento. O uso contínuo da plataforma implica aceitação das alterações.</p>
+            </section>
+            <section>
+              <h3 className="text-orange-500 font-bold uppercase tracking-tight mb-2">12. Foro</h3>
+              <p>Fica eleito o foro da comarca da sede da empresa para dirimir quaisquer conflitos.</p>
             </section>
           </div>
           <div className="mt-8 pt-6 border-t border-white/10 flex justify-end">
@@ -691,24 +751,79 @@ export default function Landing() {
           </DialogHeader>
           <div className="space-y-6 text-sm text-zinc-300 leading-relaxed">
             <section>
-              <h3 className="text-lime-400 font-bold uppercase tracking-tight mb-2">1. Coleta de Informações</h3>
-              <p>Coletamos informações que você nos fornece diretamente ao criar uma conta, como nome, e-mail e dados da barbearia. Também coletamos dados inseridos por você sobre seus clientes, como nome, telefone e histórico de serviços.</p>
+              <h3 className="text-lime-400 font-bold uppercase tracking-tight mb-2">1. Introdução</h3>
+              <p>Esta Política de Privacidade descreve como os dados pessoais dos usuários são coletados, utilizados e protegidos, em conformidade com a Lei Geral de Proteção de Dados (LGPD).</p>
             </section>
             <section>
-              <h3 className="text-lime-400 font-bold uppercase tracking-tight mb-2">2. Uso das Informações</h3>
-              <p>Utilizamos as informações para fornecer, manter e melhorar nossos serviços, além de processar transações, enviar avisos técnicos e alertas de segurança.</p>
+              <h3 className="text-lime-400 font-bold uppercase tracking-tight mb-2">2. Dados Coletados</h3>
+              <p>Podemos coletar:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Nome, e-mail e telefone</li>
+                <li>Dados de acesso (IP, dispositivo, logs)</li>
+                <li>Informações inseridas no sistema (clientes, vendas, etc.)</li>
+              </ul>
             </section>
             <section>
-              <h3 className="text-lime-400 font-bold uppercase tracking-tight mb-2">3. Proteção de Dados</h3>
-              <p>Implementamos medidas de segurança reconhecidas pelo mercado para proteger suas informações pessoais contra acesso não autorizado, alteração, divulgação ou destruição.</p>
+              <h3 className="text-lime-400 font-bold uppercase tracking-tight mb-2">3. Finalidade do Tratamento</h3>
+              <p>Os dados são utilizados para:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Execução do contrato (uso da plataforma)</li>
+                <li>Melhoria do sistema</li>
+                <li>Suporte ao cliente</li>
+                <li>Cumprimento de obrigações legais</li>
+              </ul>
+              <p className="mt-2">O tratamento de dados ocorre com base legal prevista na LGPD, como consentimento ou execução de contrato.</p>
             </section>
             <section>
               <h3 className="text-lime-400 font-bold uppercase tracking-tight mb-2">4. Compartilhamento de Dados</h3>
-              <p>Não vendemos ou transferimos seus dados pessoais a terceiros, exceto quando necessário para a operação da plataforma ou exigido por lei. Dados agregados e anonimizados podem ser usados para estatísticas gerais.</p>
+              <p>Os dados podem ser compartilhados com:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Provedores de infraestrutura (ex: servidores)</li>
+                <li>Processadores de pagamento</li>
+                <li>Autoridades legais, quando exigido</li>
+              </ul>
+              <p className="mt-2 font-bold">Nunca vendemos dados pessoais.</p>
             </section>
             <section>
-              <h3 className="text-lime-400 font-bold uppercase tracking-tight mb-2">5. Seus Direitos</h3>
-              <p>Você tem o direito de acessar, corrigir ou excluir suas informações pessoais a qualquer momento através do painel de configurações do sistema ou solicitando suporte.</p>
+              <h3 className="text-lime-400 font-bold uppercase tracking-tight mb-2">5. Direitos do Usuário</h3>
+              <p>Nos termos da LGPD, o usuário pode:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Acessar seus dados</li>
+                <li>Corrigir informações</li>
+                <li>Solicitar exclusão</li>
+                <li>Solicitar portabilidade</li>
+                <li>Revogar consentimento</li>
+              </ul>
+            </section>
+            <section>
+              <h3 className="text-lime-400 font-bold uppercase tracking-tight mb-2">6. Armazenamento e Segurança</h3>
+              <p>Adotamos medidas técnicas e organizacionais para proteger os dados contra acesso não autorizado, perda ou vazamento.</p>
+            </section>
+            <section>
+              <h3 className="text-lime-400 font-bold uppercase tracking-tight mb-2">7. Retenção de Dados</h3>
+              <p>Os dados serão armazenados apenas pelo tempo necessário para cumprir as finalidades ou exigências legais.</p>
+            </section>
+            <section>
+              <h3 className="text-lime-400 font-bold uppercase tracking-tight mb-2">8. Cookies</h3>
+              <p>Utilizamos cookies para:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Melhorar a experiência do usuário</li>
+                <li>Analisar uso da plataforma</li>
+              </ul>
+              <p className="mt-2">O usuário pode gerenciar cookies em seu navegador.</p>
+            </section>
+            <section>
+              <h3 className="text-lime-400 font-bold uppercase tracking-tight mb-2">9. Responsabilidades do Usuário</h3>
+              <p>O usuário é responsável por:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Proteger suas credenciais</li>
+                <li>Garantir a veracidade dos dados inseridos</li>
+                <li>Utilizar o sistema conforme a legislação</li>
+              </ul>
+            </section>
+            <section>
+              <h3 className="text-lime-400 font-bold uppercase tracking-tight mb-2">10. Alterações desta Política</h3>
+              <p>Esta política pode ser atualizada a qualquer momento para refletir mudanças legais ou operacionais.</p>
             </section>
           </div>
           <div className="mt-8 pt-6 border-t border-white/10 flex justify-end">

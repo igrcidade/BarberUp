@@ -28,6 +28,7 @@ export default function MasterAdmin() {
   // Detalhes do Usuário Selecionado
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [editUserForm, setEditUserForm] = useState<any>({});
+  const [selectedExtension, setSelectedExtension] = useState<number | null>(null);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<any | null>(null);
   const [newTempPassword, setNewTempPassword] = useState('');
@@ -44,6 +45,7 @@ export default function MasterAdmin() {
         subscriptionStatus: selectedUser.subscriptionStatus || 'trial',
         subscriptionEnd: selectedUser.subscriptionEnd || ''
       });
+      setSelectedExtension(null);
     }
   }, [selectedUser]);
 
@@ -104,8 +106,10 @@ export default function MasterAdmin() {
   const handleExtendAccess = async (days: number) => {
     if (!selectedUser) return;
     
-    // Calcula nova data baseado na data atual ou na data de expiração se ela for futura
-    const currentEnd = editUserForm.subscriptionEnd ? new Date(editUserForm.subscriptionEnd) : (selectedUser.subscriptionEnd ? new Date(selectedUser.subscriptionEnd) : new Date());
+    setSelectedExtension(days);
+
+    // Calcula nova data baseado na data atual ou na data de expiração original se ela for futura
+    const currentEnd = selectedUser.subscriptionEnd ? new Date(selectedUser.subscriptionEnd) : new Date();
     const referenceDate = currentEnd > new Date() ? currentEnd : new Date();
     const newEnd = addDays(referenceDate, days);
 
@@ -113,6 +117,18 @@ export default function MasterAdmin() {
        ...editUserForm,
        subscriptionStatus: 'trial',
        subscriptionEnd: newEnd.toISOString()
+    });
+  };
+
+  const handleZeroAccess = () => {
+    if (!selectedUser) return;
+    
+    setSelectedExtension(0);
+
+    setEditUserForm({
+       ...editUserForm,
+       subscriptionStatus: 'trial',
+       subscriptionEnd: new Date().toISOString()
     });
   };
 
@@ -144,35 +160,31 @@ export default function MasterAdmin() {
   };
 
   const handleDeleteUser = async () => {
-    if (!userToDelete) return;
+    if (!userToDelete || !adminUser) return;
     const { id: userId, email } = userToDelete;
     
     try {
       setLoading(true);
       
-      const batch = writeBatch(db);
+      const response = await fetch('/api/admin/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          email,
+          adminEmail: adminUser.email
+        })
+      });
 
-      // Limpar todas as colecoes relacionadas ao usuário
-      const collectionsToClean = ['services', 'products', 'clients', 'sales', 'expenses', 'barbers'];
-      for (const coll of collectionsToClean) {
-        const q = query(collection(db, coll), where('userId', '==', userId));
-        const snapshot = await getDocs(q);
-        snapshot.forEach((docSnap) => {
-          batch.delete(docSnap.ref);
-        });
+      const data = await response.json();
+      
+      if (data.success) {
+        toast.success(`Conta ${email} e seus dados removidos com sucesso.`);
+        setUserToDelete(null);
+        setUsers(prev => prev.filter(u => u.id !== userId));
+      } else {
+        toast.error(data.error || 'Erro ao remover usuário.');
       }
-
-      // Deletar o perfil do usuário
-      batch.delete(doc(db, 'profiles', userId));
-
-      // Por fim, deletar o documento principal do usuário
-      batch.delete(doc(db, 'users', userId));
-
-      await batch.commit();
-
-      toast.success(`Conta ${email} e seus dados removidos com sucesso.`);
-      setUserToDelete(null);
-      setUsers(prev => prev.filter(u => u.id !== userId));
     } catch (e: any) {
       console.error('Erro ao deletar usuário:', e);
       toast.error('Erro ao remover usuário. Verifique as permissões.');
@@ -539,10 +551,11 @@ export default function MasterAdmin() {
                     <Clock className="w-4 h-4" /> CONCEDER ACESSO MANUAL
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" onClick={() => handleExtendAccess(7)} className="rounded-xl h-11 border-border bg-muted/10 hover:border-[#009EE3] hover:text-[#009EE3] px-6 font-black text-[10px] tracking-widest">+ 07 DIAS</Button>
-                    <Button variant="outline" onClick={() => handleExtendAccess(15)} className="rounded-xl h-11 border-border bg-muted/10 hover:border-[#009EE3] hover:text-[#009EE3] px-6 font-black text-[10px] tracking-widest">+ 15 DIAS</Button>
-                    <Button variant="outline" onClick={() => handleExtendAccess(30)} className="rounded-xl h-11 border-border bg-muted/10 hover:border-[#009EE3] hover:text-[#009EE3] px-6 font-black text-[10px] tracking-widest">+ 30 DIAS</Button>
-                    <Button variant="outline" onClick={() => handleExtendAccess(365)} className="rounded-xl h-11 border-border bg-muted/10 hover:border-lime-500 hover:text-lime-500 px-6 font-black text-[10px] tracking-widest">+ 365 DIAS (ANUAL)</Button>
+                    <Button variant="outline" onClick={() => handleZeroAccess()} className={`rounded-xl h-11 px-6 font-black text-[10px] tracking-widest ${selectedExtension === 0 ? 'barber-button-primary border-transparent text-white' : 'border-border bg-muted/10 hover:border-orange-500 hover:text-orange-500'}`}>ZERAR DIAS</Button>
+                    <Button variant="outline" onClick={() => handleExtendAccess(7)} className={`rounded-xl h-11 px-6 font-black text-[10px] tracking-widest ${selectedExtension === 7 ? 'barber-button-primary border-transparent text-white' : 'border-border bg-muted/10 hover:border-[#009EE3] hover:text-[#009EE3]'}`}>+ 07 DIAS</Button>
+                    <Button variant="outline" onClick={() => handleExtendAccess(15)} className={`rounded-xl h-11 px-6 font-black text-[10px] tracking-widest ${selectedExtension === 15 ? 'barber-button-primary border-transparent text-white' : 'border-border bg-muted/10 hover:border-[#009EE3] hover:text-[#009EE3]'}`}>+ 15 DIAS</Button>
+                    <Button variant="outline" onClick={() => handleExtendAccess(30)} className={`rounded-xl h-11 px-6 font-black text-[10px] tracking-widest ${selectedExtension === 30 ? 'barber-button-primary border-transparent text-white' : 'border-border bg-muted/10 hover:border-[#009EE3] hover:text-[#009EE3]'}`}>+ 30 DIAS</Button>
+                    <Button variant="outline" onClick={() => handleExtendAccess(365)} className={`rounded-xl h-11 px-6 font-black text-[10px] tracking-widest ${selectedExtension === 365 ? 'barber-button-primary border-transparent text-white' : 'border-border bg-muted/10 hover:border-lime-500 hover:text-lime-500'}`}>+ 365 DIAS (ANUAL)</Button>
                   </div>
                 </div>
 

@@ -85,13 +85,13 @@ export default function Register() {
       }
     } catch (err: any) {
       console.error(err);
-      if (err.code === 'auth/network-request-failed') {
+      if (err.code === 'auth/network-request-failed' || err.message?.includes('network-request-failed')) {
         setError('Erro de conexão. Se você estiver no modo de visualização (iframe) e seu navegador bloquear cookies de terceiros, tente "Abrir em nova aba" ou desativar o bloqueio.');
-      } else if (err.code === 'auth/operation-not-allowed') {
+      } else if (err.code === 'auth/operation-not-allowed' || err.message?.includes('operation-not-allowed')) {
         setError('O cadastro por e-mail/senha não está habilitado no Firebase Console.');
-      } else if (err.code === 'auth/email-already-in-use') {
-        setError('Este e-mail já está em uso.');
-      } else if (err.code === 'auth/weak-password') {
+      } else if (err.code === 'auth/email-already-in-use' || err.message?.includes('email-already-in-use')) {
+        setError('O e-mail informado já está cadastrado em outra conta.');
+      } else if (err.code === 'auth/weak-password' || err.message?.includes('weak-password')) {
         setError('A senha deve ter pelo menos 6 caracteres.');
       } else {
         setError(err.message || 'Ocorreu um erro ao criar sua conta. Tente novamente.');
