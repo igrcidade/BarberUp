@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -27,8 +27,6 @@ try {
 } catch (error) {
   console.error('❌ Firebase Admin init error:', error);
 }
-
-const db = admin.firestore();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -161,7 +159,6 @@ app.post('/api/webhooks/mercadopago', async (req, res) => {
     if (req.body.type === 'payment' && paymentId) {
        if (client) {
          try {
-           const { Payment } = require('mercadopago');
            const payment = new Payment(client);
            const paymentData = await payment.get({ id: paymentId });
            
