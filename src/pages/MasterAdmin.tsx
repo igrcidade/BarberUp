@@ -40,7 +40,9 @@ export default function MasterAdmin() {
         name: selectedUser.name || '',
         barbershopName: selectedUser.barbershopName || '',
         phone: selectedUser.phone || '',
-        subscriptionPlan: selectedUser.subscriptionPlan || 'mensal'
+        subscriptionPlan: selectedUser.subscriptionPlan || 'mensal',
+        subscriptionStatus: selectedUser.subscriptionStatus || 'trial',
+        subscriptionEnd: selectedUser.subscriptionEnd || ''
       });
     }
   }, [selectedUser]);
@@ -93,10 +95,6 @@ export default function MasterAdmin() {
     try {
       await updateDoc(doc(db, 'users', userId), data);
       setUsers(users.map(u => u.id === userId ? { ...u, ...data } : u));
-      if (selectedUser?.id === userId) {
-        setSelectedUser({ ...selectedUser, ...data });
-      }
-      toast.success('Usuário atualizado com sucesso!');
     } catch (e) {
       console.error(e);
       toast.error('Erro ao atualizar usuário.');
@@ -107,15 +105,15 @@ export default function MasterAdmin() {
     if (!selectedUser) return;
     
     // Calcula nova data baseado na data atual ou na data de expiração se ela for futura
-    const currentEnd = selectedUser.subscriptionEnd ? new Date(selectedUser.subscriptionEnd) : new Date();
+    const currentEnd = editUserForm.subscriptionEnd ? new Date(editUserForm.subscriptionEnd) : (selectedUser.subscriptionEnd ? new Date(selectedUser.subscriptionEnd) : new Date());
     const referenceDate = currentEnd > new Date() ? currentEnd : new Date();
     const newEnd = addDays(referenceDate, days);
 
-    await handleUpdateUserStatus(selectedUser.id, {
-      subscriptionStatus: 'active',
-      subscriptionEnd: newEnd.toISOString()
+    setEditUserForm({
+       ...editUserForm,
+       subscriptionStatus: 'trial',
+       subscriptionEnd: newEnd.toISOString()
     });
-    toast.success(`Acesso estendido por ${days} dias.`);
   };
 
   const handleResetPassword = async () => {
@@ -455,25 +453,25 @@ export default function MasterAdmin() {
 
       {/* Modal de Gestão Holística do Cliente */}
       <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
-        <DialogContent className="max-w-4xl bg-card border-none rounded-3xl p-0 overflow-hidden shadow-3xl">
+        <DialogContent className="w-full max-w-[95vw] sm:max-w-4xl bg-card border-none rounded-3xl p-0 overflow-hidden shadow-3xl flex flex-col">
           {selectedUser && (
-            <div className="flex flex-col h-full max-h-[95vh]">
+            <div className="flex flex-col h-full max-h-[95vh] overflow-y-auto">
               {/* Header do Modal com Avatar e Stats */}
-              <div className="p-8 pb-6 bg-muted/30 border-b border-border flex items-start justify-between">
-                <div className="flex gap-6">
-                  <div className="w-24 h-24 rounded-3xl bg-primary/10 border-2 border-primary/20 flex items-center justify-center text-4xl font-black text-primary shadow-2xl shrink-0">
+              <div className="p-6 sm:p-8 sm:pb-6 bg-muted/30 border-b border-border flex flex-col sm:flex-row items-start sm:justify-between gap-4">
+                <div className="flex gap-6 items-center sm:items-start">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-primary/10 border-2 border-primary/20 flex items-center justify-center text-3xl sm:text-4xl font-black text-primary shadow-2xl shrink-0">
                     {selectedUser.barbershopName?.charAt(0)}
                   </div>
-                  <div className="flex flex-col gap-1 pt-2 min-w-0">
+                  <div className="flex flex-col gap-1 pt-1 sm:pt-2 min-w-0">
                     <div className="flex items-center gap-3">
-                      <h2 className="text-2xl font-black uppercase tracking-tight text-white truncate max-w-[400px]">{selectedUser.barbershopName}</h2>
+                      <h2 className="text-xl font-black uppercase tracking-tight text-white truncate max-w-full">{selectedUser.barbershopName}</h2>
                     </div>
-                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 mb-2">
-                       <Mail className="w-4 h-4 text-primary" /> {selectedUser.email}
+                    <p className="text-xs sm:text-sm font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 mb-2">
+                       <Mail className="w-3 h-3 sm:w-4 sm:h-4 text-primary shrink-0" /> <span className="truncate">{selectedUser.email}</span>
                     </p>
                     <div className="flex flex-wrap items-center gap-3">
-                      <Badge className={selectedUser.subscriptionStatus === 'active' ? 'bg-lime-500 text-black' : 'bg-orange-500 text-black'}>
-                        {selectedUser.subscriptionStatus === 'active' ? 'ASSINATURA ATIVA' : 'PERÍODO EXPERIMENTAL'}
+                      <Badge className={editUserForm.subscriptionStatus === 'active' ? 'bg-lime-500 text-black' : editUserForm.subscriptionStatus === 'blocked' ? 'bg-destructive text-white' : 'bg-orange-500 text-black'}>
+                        {editUserForm.subscriptionStatus === 'active' ? 'ASSINATURA ATIVA' : editUserForm.subscriptionStatus === 'blocked' ? 'CONTA BLOQUEADA' : 'PERÍODO EXPERIMENTAL'}
                       </Badge>
                       <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-60 flex items-center gap-1">
                         <Calendar className="w-3 h-3" /> Criado em: {selectedUser.createdAt ? format(new Date(selectedUser.createdAt), "dd/MM/yyyy") : 'N/A'}
@@ -560,17 +558,15 @@ export default function MasterAdmin() {
                           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Impede qualquer interação com o sistema imediatamente</p>
                        </div>
                        <Button 
-                         variant={selectedUser.subscriptionStatus === 'blocked' ? 'default' : 'outline'}
-                         onClick={() => handleUpdateUserStatus(selectedUser.id, { 
-                           subscriptionStatus: selectedUser.subscriptionStatus === 'blocked' ? 'active' : 'blocked' 
-                         })}
+                         variant={editUserForm.subscriptionStatus === 'blocked' ? 'default' : 'outline'}
+                         onClick={() => setEditUserForm({ ...editUserForm, subscriptionStatus: editUserForm.subscriptionStatus === 'blocked' ? (selectedUser.subscriptionEnd && new Date(selectedUser.subscriptionEnd) > new Date() ? 'active' : 'trial') : 'blocked' })}
                          className={`rounded-xl h-11 px-8 font-black text-[10px] tracking-widest transition-all ${
-                            selectedUser.subscriptionStatus === 'blocked' 
+                            editUserForm.subscriptionStatus === 'blocked' 
                             ? 'bg-lime-500 text-black hover:bg-lime-600' 
                             : 'border-destructive text-destructive hover:bg-destructive hover:text-white'
                          }`}
                        >
-                         {selectedUser.subscriptionStatus === 'blocked' ? 'REATIVAR CLIENTE' : 'BLOQUEAR CLIENTE'}
+                         {editUserForm.subscriptionStatus === 'blocked' ? 'REATIVAR CLIENTE' : 'BLOQUEAR CLIENTE'}
                        </Button>
                     </div>
 

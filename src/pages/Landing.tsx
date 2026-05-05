@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { MockDashboard } from '@/components/MockDashboard';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from 'sonner';
@@ -365,19 +366,17 @@ export default function Landing() {
             ))}
           </div>
 
-          {/* Modern Dashboard Image */}
+          {/* Modern Dashboard Component */}
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-2xl relative border border-white/10"
+            className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-2xl relative border border-white/10 bg-background"
           >
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10" />
-            <img 
-              src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1600&q=80" 
-              alt="Dashboard de Gestão" 
-              className="w-full h-auto max-h-[500px] object-cover mix-blend-luminosity opacity-80"
-            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10 pointer-events-none" />
+            <div className="w-full h-[500px] overflow-hidden">
+               <MockDashboard />
+            </div>
             <div className="absolute bottom-10 left-10 z-20">
               <Badge className="bg-orange-500 text-black font-black uppercase tracking-widest px-3 py-1 mb-3">Visão Completa</Badge>
               <h3 className="text-3xl font-black text-white uppercase tracking-tighter">Decisões baseadas <br/> em dados.</h3>
