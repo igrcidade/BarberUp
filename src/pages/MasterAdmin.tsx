@@ -27,11 +27,23 @@ export default function MasterAdmin() {
   
   // Detalhes do Usuário Selecionado
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [editUserForm, setEditUserForm] = useState<any>({});
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<any | null>(null);
   const [newTempPassword, setNewTempPassword] = useState('');
 
   const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    if (selectedUser) {
+      setEditUserForm({
+        name: selectedUser.name || '',
+        barbershopName: selectedUser.barbershopName || '',
+        phone: selectedUser.phone || '',
+        subscriptionPlan: selectedUser.subscriptionPlan || 'mensal'
+      });
+    }
+  }, [selectedUser]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -443,7 +455,7 @@ export default function MasterAdmin() {
 
       {/* Modal de Gestão Holística do Cliente */}
       <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
-        <DialogContent className="max-w-3xl bg-card border-none rounded-3xl p-0 overflow-hidden shadow-3xl">
+        <DialogContent className="max-w-4xl bg-card border-none rounded-3xl p-0 overflow-hidden shadow-3xl">
           {selectedUser && (
             <div className="flex flex-col h-full max-h-[95vh]">
               {/* Header do Modal com Avatar e Stats */}
@@ -454,7 +466,7 @@ export default function MasterAdmin() {
                   </div>
                   <div className="flex flex-col gap-1 pt-2 min-w-0">
                     <div className="flex items-center gap-3">
-                      <h2 className="text-3xl font-black uppercase tracking-tight text-white truncate max-w-[400px]">{selectedUser.barbershopName}</h2>
+                      <h2 className="text-2xl font-black uppercase tracking-tight text-white truncate max-w-[400px]">{selectedUser.barbershopName}</h2>
                     </div>
                     <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 mb-2">
                        <Mail className="w-4 h-4 text-primary" /> {selectedUser.email}
@@ -483,32 +495,32 @@ export default function MasterAdmin() {
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Proprietário / Responsável</Label>
                       <Input 
-                        defaultValue={selectedUser.name} 
-                        onBlur={(e) => handleUpdateUserStatus(selectedUser.id, { name: e.target.value })}
+                        value={editUserForm.name || ''} 
+                        onChange={(e) => setEditUserForm({ ...editUserForm, name: e.target.value })}
                         className="h-11 bg-muted/20 border-border rounded-xl font-black uppercase text-xs focus:ring-primary/20"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Nome Fantasia (Barbearia)</Label>
                       <Input 
-                        defaultValue={selectedUser.barbershopName} 
-                        onBlur={(e) => handleUpdateUserStatus(selectedUser.id, { barbershopName: e.target.value })}
+                        value={editUserForm.barbershopName || ''} 
+                        onChange={(e) => setEditUserForm({ ...editUserForm, barbershopName: e.target.value })}
                         className="h-11 bg-muted/20 border-border rounded-xl font-black uppercase text-xs focus:ring-primary/20"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Contato Telefônico</Label>
                       <Input 
-                        defaultValue={selectedUser.phone} 
-                        onBlur={(e) => handleUpdateUserStatus(selectedUser.id, { phone: e.target.value })}
+                        value={editUserForm.phone || ''} 
+                        onChange={(e) => setEditUserForm({ ...editUserForm, phone: e.target.value })}
                         className="h-11 bg-muted/20 border-border rounded-xl font-black uppercase text-xs focus:ring-primary/20"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Vincular Plano</Label>
                       <Select 
-                        value={selectedUser.subscriptionPlan || 'mensal'} 
-                        onValueChange={(val) => handleUpdateUserStatus(selectedUser.id, { subscriptionPlan: val })}
+                        value={editUserForm.subscriptionPlan || 'mensal'} 
+                        onValueChange={(val) => setEditUserForm({ ...editUserForm, subscriptionPlan: val })}
                       >
                         <SelectTrigger className="h-11 bg-muted/20 border-border rounded-xl font-black uppercase text-xs">
                           <SelectValue />
@@ -576,9 +588,18 @@ export default function MasterAdmin() {
               </div>
 
               {/* Footer de Encerramento */}
-              <div className="p-8 bg-muted/30 border-t border-border flex justify-end">
-                <Button variant="ghost" onClick={() => setSelectedUser(null)} className="h-12 px-10 rounded-xl uppercase font-black text-[11px] tracking-[0.2em] text-muted-foreground hover:bg-muted/20 transition-all">
-                   ENCERRAR SESSÃO DE GESTÃO
+              <div className="p-8 bg-muted/30 border-t border-border flex justify-end gap-4">
+                <Button variant="ghost" onClick={() => setSelectedUser(null)} className="h-12 px-8 rounded-xl uppercase font-black text-[11px] tracking-[0.2em] text-muted-foreground hover:bg-muted/20 transition-all">
+                   CANCELAR
+                </Button>
+                <Button 
+                  onClick={() => {
+                    handleUpdateUserStatus(selectedUser.id, editUserForm);
+                    setSelectedUser(null);
+                  }} 
+                  className="barber-button-primary h-12 px-8 rounded-xl font-black tracking-widest uppercase"
+                >
+                   CONFIRMAR ALTERAÇÕES
                 </Button>
               </div>
             </div>
