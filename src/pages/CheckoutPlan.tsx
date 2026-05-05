@@ -39,14 +39,16 @@ export default function CheckoutPlan() {
           email: user.email,
           title: `BarberUp - Plano ${selectedPlan.name}`,
           price: selectedPlan.price.replace(',', '.'),
-          planType: selectedPlan.planType
+          planType: selectedPlan.planType,
+          returnUrl: window.location.origin
         })
       });
 
       const data = await response.json();
       if (data.init_point) {
         console.log('Redirecionando para MercadoPago checkout:', data.init_point);
-        window.location.href = data.init_point;
+        window.open(data.init_point, '_blank');
+        navigate('/app'); // Opcional: Voltar ao app enquanto aguarda
       } else {
         alert('Erro ao gerar pagamento');
       }

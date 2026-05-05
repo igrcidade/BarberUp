@@ -18,6 +18,8 @@ try {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
     });
+  } else if (process.env.VITE_FIREBASE_PROJECT_ID) {
+    admin.initializeApp({ projectId: process.env.VITE_FIREBASE_PROJECT_ID });
   } else {
     admin.initializeApp();
   }
@@ -45,15 +47,13 @@ if (mpToken) {
 
 app.post('/api/create-checkout', async (req, res) => {
   try {
-    const { title, price, userId, email, planType } = req.body;
+    const { title, price, userId, email, planType, returnUrl } = req.body;
     
     if (!client) {
       return res.status(500).json({ error: 'MercadoPago is not configured' });
     }
 
-    const host = req.headers.host;
-    const protocol = req.headers['x-forwarded-proto'] || 'https';
-    const appUrl = `${protocol}://${host}`;
+    const appUrl = returnUrl || `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}`;
 
     const preference = new Preference(client);
     const result = await preference.create({
@@ -127,9 +127,7 @@ app.post('/api/admin/delete-user', async (req, res) => {
       // 1. Delete user from Firebase Auth
       await admin.auth().deleteUser(userId);
     } catch (e) {
-      if (e.code !== 'auth/user-not-found') {
-        throw e;
-      }
+      console.warn('Could not delete user from Firebase Auth. Proceeding to delete from Firestore. Error:', e.message);
     }
 
     // 2. Delete user document from Firestore
