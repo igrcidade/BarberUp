@@ -36,12 +36,12 @@ try {
   }
   
   if (fbConfig && fbConfig.firestoreDatabaseId) {
-    db = getFirestore(undefined, fbConfig.firestoreDatabaseId);
+    db = getFirestore(admin.app(), fbConfig.firestoreDatabaseId);
   } else {
     db = getFirestore();
   }
 
-  console.log('✅ Firebase Admin initialized');
+  console.log('✅ Firebase Admin initialized, db exists:', !!db, 'db.collection exists:', !!db?.collection);
 } catch (error) {
   console.error('❌ Firebase Admin init error:', error);
 }
@@ -143,7 +143,9 @@ app.post('/api/admin/delete-user', async (req, res) => {
       // 1. Delete user from Firebase Auth
       await admin.auth().deleteUser(userId);
     } catch (e) {
-      console.warn('Could not delete user from Firebase Auth. Proceeding to delete from Firestore. Error:', e.message);
+      if (e.code !== 'auth/user-not-found') {
+        console.warn('Could not delete user from Firebase Auth. Proceeding to delete from Firestore. Error:', e.message);
+      }
     }
 
     // 2. Delete user document from Firestore
@@ -172,9 +174,19 @@ app.post('/api/admin/delete-user', async (req, res) => {
 // MercadoPago Webhook
 app.post('/api/webhooks/mercadopago', async (req, res) => {
   try {
-    console.log('Webhook Received:', req.body);
-    const paymentId = req.body?.data?.id;
-    if (req.body.type === 'payment' && paymentId) {
+    console.log('Webhook Received body:', req.body, 'query:', req.query);
+    
+    let paymentId = req.body?.data?.id;
+    let type = req.body?.type;
+    
+    if (!paymentId && req.query.id) {
+       paymentId = req.query.id;
+    }
+    if (!type && req.query.topic) {
+       type = req.query.topic;
+    }
+
+    if (type === 'payment' && paymentId) {
        if (client) {
          try {
            const payment = new Payment(client);
@@ -210,6 +222,7 @@ app.post('/api/webhooks/mercadopago', async (req, res) => {
            console.error('Error fetching payment:', paymentErr);
          }
        }
+       // MP expects 200/201
        res.status(200).send('OK');
     } else {
        res.status(200).send('OK');
