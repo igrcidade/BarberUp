@@ -697,9 +697,10 @@ export default function Dashboard() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
                   placeholder="Pesquisar cliente..." 
-                  className="pl-9 pr-8 h-10 bg-card border-border rounded-lg text-xs focus:ring-1 focus:ring-primary/20 transition-all font-medium"
+                  className="pl-9 pr-8 h-10 bg-card border-border rounded-lg text-[16px] md:text-xs focus:ring-1 focus:ring-primary/20 transition-all font-medium"
                   value={extratoClientFilter}
-                  onFocus={(e) => { setIsExtratoClientOpen(true); e.target.select(); }}
+                  onClick={() => setExtratoClientFilter('')}
+                  onFocus={() => setIsExtratoClientOpen(true)}
                   onBlur={() => setTimeout(() => setIsExtratoClientOpen(false), 200)}
                   onChange={(e) => setExtratoClientFilter(e.target.value)}
                 />
@@ -728,9 +729,10 @@ export default function Dashboard() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
                   placeholder="Pesquisar barbeiro..." 
-                  className="pl-9 pr-8 h-10 bg-card border-border rounded-lg text-xs focus:ring-1 focus:ring-primary/20 transition-all font-medium"
+                  className="pl-9 pr-8 h-10 bg-card border-border rounded-lg text-[16px] md:text-xs focus:ring-1 focus:ring-primary/20 transition-all font-medium"
                   value={extratoBarberFilter}
-                  onFocus={(e) => { setIsExtratoBarberOpen(true); e.target.select(); }}
+                  onClick={() => setExtratoBarberFilter('')}
+                  onFocus={() => setIsExtratoBarberOpen(true)}
                   onBlur={() => setTimeout(() => setIsExtratoBarberOpen(false), 200)}
                   onChange={(e) => setExtratoBarberFilter(e.target.value)}
                 />
