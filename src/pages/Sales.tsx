@@ -49,6 +49,15 @@ const highlightMatch = (text: string, query: string) => {
 
 export default function Sales() {
   const { isActive } = useAuth();
+  
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+      mainContent.scrollTop = 0;
+    }
+  }, []);
+
   const [sales, setSales] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);

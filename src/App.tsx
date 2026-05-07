@@ -3,9 +3,31 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/auth';
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    // Reset window scroll
+    window.scrollTo(0, 0);
+    
+    // Reset standard containers scroll
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+    
+    // Target main layout container specifically if it exists
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+      mainContent.scrollTop = 0;
+      mainContent.scrollTo(0, 0);
+    }
+  }, [pathname]);
+
+  return null;
+}
 import { auth } from './lib/firebase';
 import { ShieldCheck } from 'lucide-react';
 import { Button } from './components/ui/button';
@@ -78,6 +100,7 @@ export default function App() {
     <ThemeProvider defaultTheme="dark" storageKey="barberup-theme">
       <AuthProvider>
         <Router>
+          <ScrollToTop />
           <Toaster position="top-right" richColors theme="dark" />
           <Routes>
             <Route path="/" element={<Landing />} />
