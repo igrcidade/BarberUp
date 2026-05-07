@@ -112,7 +112,7 @@ export default function Landing() {
   const plans = [
     {
       name: 'Mensal',
-      price: '1,00',
+      price: '69,90',
       period: '/mês',
       description: 'Ideal para quem está começando agora.',
       features: ['Gestão de Clientes', 'Controle Financeiro', 'PDV Completo', 'Até 2 Profissionais'],
@@ -121,23 +121,23 @@ export default function Landing() {
     },
     {
       name: 'Anual',
-      price: '0,90',
+      price: '49,90',
       period: '/mês',
       description: 'O melhor custo-benefício para sua elite.',
       features: ['Tudo do Mensal', 'Gestão de Estoque', 'Relatórios de Retenção', 'Profissionais Ilimitados', 'Suporte Prioritário'],
       cta: 'Assinar Plano Anual',
       popular: true,
-      billed: 'Valor Total: R$ 0,90'
+      billed: 'Valor Total: R$ 598,80'
     },
     {
       name: 'Semestral',
-      price: '0,95',
+      price: '59,90',
       period: '/mês',
       description: 'Equilíbrio perfeito para seu crescimento.',
       features: ['Tudo do Mensal', 'Gestão de Estoque', 'Até 5 Profissionais', 'Suporte via WhatsApp'],
       cta: 'Assinar Plano Semestral',
       popular: false,
-      billed: 'Valor Total: R$ 0,95'
+      billed: 'Valor Total: R$ 359,40'
     }
   ];
 
@@ -205,7 +205,11 @@ export default function Landing() {
             <span className="text-orange-500 font-black italic block mt-2">De Nível</span>
           </motion.h1>
 
-          <motion.p variants={itemVariants} className="text-lg text-zinc-400 font-medium max-w-lg leading-relaxed">
+          <motion.p variants={itemVariants} className="text-[#bef264] font-black uppercase tracking-widest text-sm md:text-base mt-2">
+            O app que virou febre entre as barbearias 🔥
+          </motion.p>
+
+          <motion.p variants={itemVariants} className="text-lg text-zinc-400 font-medium max-w-lg leading-relaxed mt-4">
             Abandone o improviso. Tenha uma gestão cirúrgica da sua barbearia com tecnologia de ponta. Venda, gerencie e lucre mais com o sistema feito para o seu negócio.
           </motion.p>
 
@@ -396,32 +400,32 @@ export default function Landing() {
           {[
             { 
               name: 'Thiago Oliveira', 
-              text: 'A gestão ficou tão leve que tive tempo para abrir minha segunda unidade. O app é essencial.',
+              text: 'Comecei a usar tem duas semanas e a gestão já ficou tão leve que tive tempo para focar nos clientes. O app já se tornou essencial.',
               image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=200&h=200'
             },
             { 
               name: 'Ricardo Mello', 
-              text: 'Controlar as comissões dos 5 barbeiros era um pesadelo. Hoje o sistema faz tudo sem margem de erro.',
+              text: 'Começamos com o sistema ontem e já notei a diferença. Controlar as comissões dos barbeiros era um pesadelo, agora tudo é automático.',
               image: 'https://images.unsplash.com/photo-1622296089863-eb7fc530daa8?auto=format&fit=crop&w=200&h=200'
             },
             { 
               name: 'Carlos Santos', 
-              text: 'A gestão financeira ficou muito mais fácil. A minha taxa de retorno subiu absurdamente no último mês.',
+              text: 'Contratei o sistema há poucos dias e a gestão financeira já ficou incrivelmente mais fácil. Já estou recomendando para meus amigos.',
               image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&h=200'
             },
             { 
               name: 'André Ferreira', 
-              text: 'O PDV é muito rápido. Faço vendas de produtos e serviços em segundos. Mudou minha rotina.',
+              text: 'Assinamos no lançamento essa semana e a experiência no PDV é absurda de rápida. Faço vendas de produtos e serviços em segundos.',
               image: 'https://images.unsplash.com/photo-1534308143481-c55f00be8bd7?auto=format&fit=crop&w=200&h=200'
             },
             { 
               name: 'Bruno Lima', 
-              text: 'Os relatórios me mostraram que eu estava perdendo dinheiro em estoque. Recuperei o investimento em 15 dias.',
+              text: 'Configurei meu acesso nesse fim de semana e os relatórios me mostraram de cara onde eu estava perdendo dinheiro em estoque.',
               image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&h=200'
             },
             { 
               name: 'Fabiano Costa', 
-              text: 'Sistema intuitivo e suporte nota 10. Migrei de outro software e foi a melhor decisão para minha barbearia.',
+              text: 'Migrei de outro software há apenas três dias. Sistema super intuitivo e suporte nota 10. A melhor decisão para nossa equipe.',
               image: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=200&h=200'
             }
           ].map((item, i) => (
@@ -509,7 +513,8 @@ export default function Landing() {
                 key={plan.name}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
+                whileHover={{ y: -8, scale: 1.02 }}
+                transition={{ delay: i * 0.1, duration: 0.3, ease: 'easeOut' }}
                 viewport={{ once: true }}
                 className={`relative p-8 rounded-3xl border flex flex-col justify-between ${
                   plan.popular 

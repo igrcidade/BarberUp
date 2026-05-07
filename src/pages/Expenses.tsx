@@ -33,6 +33,7 @@ import { ptBR } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth';
+import { formatCurrencyInput, parseCurrencyInput } from '@/lib/currency';
 
 const categories = ['Aluguel', 'Energia', 'Água', 'Internet', 'Produtos', 'Manutenção', 'Marketing', 'Outros', 'Salários'];
 
@@ -76,7 +77,7 @@ export default function Expenses() {
     e.preventDefault();
     const data = { 
       ...formData, 
-      amount: parseFloat(formData.amount || '0'),
+      amount: parseCurrencyInput(formData.amount),
       date: formData.date
     };
 
@@ -124,7 +125,7 @@ export default function Expenses() {
 
     setFormData({
       description: expense.description,
-      amount: expense.amount.toString(),
+      amount: formatCurrencyInput(expense.amount ? expense.amount.toFixed(2) : ''),
       category: expense.category || 'Outros',
       date: defaultDate,
       isRecurrent: mode === 'future' ? true : (mode === 'normal' ? expense.isRecurrent : false)
@@ -235,16 +236,15 @@ export default function Expenses() {
                     <div className="space-y-2">
                       <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Montante (R$)</Label>
                       <Input 
-                        type="number" 
-                        step="0.01" 
+                        type="text" 
                         className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-primary font-bold text-lg"
                         value={formData.amount} 
-                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })} 
+                        onChange={(e) => setFormData({ ...formData, amount: formatCurrencyInput(e.target.value) })} 
                         required 
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Data Base</Label>
+                      <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Vencimento</Label>
                       <Input 
                         type="date" 
                         className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"

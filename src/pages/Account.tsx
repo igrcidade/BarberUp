@@ -231,9 +231,9 @@ export default function Account() {
         </CardHeader>
         <CardContent className="p-6">
           <form onSubmit={handleChangePassword} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
               <div className="space-y-2">
-                <Label className="text-xs uppercase font-bold tracking-widest text-muted-foreground">Senha Atual</Label>
+                <Label className="text-xs uppercase font-bold tracking-widest text-muted-foreground whitespace-nowrap">Senha Atual</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input 
@@ -247,21 +247,21 @@ export default function Account() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-xs uppercase font-bold tracking-widest text-muted-foreground">Nova Senha (Min. 6 Caract.)</Label>
+                <Label className="text-xs uppercase font-bold tracking-widest text-muted-foreground whitespace-nowrap">Nova Senha</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input 
                     type="password"
                     value={passwords.new}
                     onChange={(e) => setPasswords({...passwords, new: e.target.value})}
-                    placeholder="Letras e Números"
+                    placeholder="Mínimo de 6 caracteres"
                     required
                     className="bg-muted/50 pl-10"
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-xs uppercase font-bold tracking-widest text-muted-foreground">Confirmar Nova Senha</Label>
+                <Label className="text-xs uppercase font-bold tracking-widest text-muted-foreground whitespace-nowrap">Confirmar Senha</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input 

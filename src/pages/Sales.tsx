@@ -26,7 +26,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { formatPhone } from '@/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isToday } from 'date-fns';
 import { subscribeToCollection, addDocument, deleteDocument, updateDocument } from '../lib/db';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
@@ -272,6 +272,13 @@ export default function Sales() {
     b.active && b.name.toLowerCase().includes(barberSearch.toLowerCase())
   );
 
+  const todaySalesCount = sales.filter((sale) => {
+    const sDate = sale.createdAt;
+    if (!sDate) return false;
+    const dateObj = sDate.toDate ? sDate.toDate() : parseISO(sDate);
+    return isToday(dateObj);
+  }).length;
+
   return (
     <div className="flex flex-col xl:flex-row gap-8 animate-in fade-in duration-700 min-h-[calc(100vh-140px)]">
       {/* Main Area: Catalog Selection */}
@@ -320,9 +327,11 @@ export default function Sales() {
                 <div className="absolute z-[60] w-full mt-2 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden max-h-[250px] overflow-y-auto">
                   <div 
                     className="p-4 text-xs cursor-pointer hover:bg-primary/10 border-b border-border font-bold text-primary transition-colors flex items-center gap-2 uppercase tracking-wider"
-                    onClick={() => {
+                    onPointerDown={(e) => {
+                      e.preventDefault();
                       setSelectedClientId('none');
                       setClientSearch('Consumidor Avulso');
+                      setIsClientOpen(false);
                     }}
                   >
                     <User className="w-4 h-4" /> Consumidor Estreante
@@ -331,9 +340,11 @@ export default function Sales() {
                     <div 
                       key={c.id} 
                       className="p-4 text-sm cursor-pointer hover:bg-muted transition-all flex flex-col border-b border-border last:border-0 px-6"
-                      onClick={() => {
+                      onPointerDown={(e) => {
+                        e.preventDefault();
                         setSelectedClientId(c.id);
                         setClientSearch(c.name);
+                        setIsClientOpen(false);
                       }}
                     >
                       <span className="font-bold text-xs uppercase tracking-tight">{highlightMatch(c.name, clientSearch)}</span>
@@ -363,9 +374,11 @@ export default function Sales() {
                 <div className="absolute z-[60] w-full mt-2 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden max-h-[250px] overflow-y-auto">
                    <div 
                     className="p-4 text-xs cursor-pointer hover:bg-primary/10 border-b border-border font-bold text-primary transition-colors flex items-center gap-2 uppercase tracking-wider"
-                    onClick={() => {
+                    onPointerDown={(e) => {
+                      e.preventDefault();
                       setSelectedBarberId('none');
                       setBarberSearch('Sem Barbeiro');
+                      setIsBarberOpen(false);
                     }}
                   >
                     <Scissors className="w-4 h-4" /> Sem Barbeiro
@@ -374,9 +387,11 @@ export default function Sales() {
                     <div 
                       key={b.id} 
                       className="p-4 text-sm cursor-pointer hover:bg-muted transition-all flex flex-col border-b border-border last:border-0 px-6"
-                      onClick={() => {
+                      onPointerDown={(e) => {
+                        e.preventDefault();
                         setSelectedBarberId(b.id);
                         setBarberSearch(b.name);
+                        setIsBarberOpen(false);
                       }}
                     >
                       <span className="font-bold text-xs uppercase tracking-tight">{highlightMatch(b.name, barberSearch)}</span>
@@ -588,12 +603,15 @@ export default function Sales() {
           
           <CardHeader className="py-6 px-8 border-b border-border bg-muted/30">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20">
+              <div className="w-12 h-12 rounded-xl bg-primary relative flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20">
                 <ShoppingCart className="w-6 h-6" />
+                <div className="absolute -top-2 -right-2 bg-foreground text-background font-black text-[9px] min-w-5 h-5 flex items-center justify-center rounded-full px-1.5 ring-2 ring-card shadow-xl">
+                  {todaySalesCount}
+                </div>
               </div>
               <div className="flex flex-col">
                 <CardTitle className="text-xl font-bold uppercase tracking-tight">Checkout</CardTitle>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-70">Sessão # {Math.random().toString(36).substr(2, 4).toUpperCase()}</span>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-70">Vendas hoje: {todaySalesCount}</span>
               </div>
             </div>
           </CardHeader>

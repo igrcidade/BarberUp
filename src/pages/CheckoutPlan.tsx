@@ -17,9 +17,9 @@ export default function CheckoutPlan() {
   const [loading, setLoading] = useState(false);
 
   const planDetails = {
-    mensal: { name: 'Mensal', price: '1,00', period: 'mês', displayPrice: '1,00', totalText: '', planType: 'mensal' },
-    semestral: { name: 'Semestral', price: '0,95', period: 'mês', displayPrice: '0,95', totalText: 'Total R$ 0,95 / semestre', planType: 'semestral' },
-    anual: { name: 'Anual', price: '0,90', period: 'mês', displayPrice: '0,90', totalText: 'Total R$ 0,90 / ano', planType: 'anual' }
+    mensal: { name: 'Mensal', price: '69,90', period: 'mês', displayPrice: '69,90', totalText: '', planType: 'mensal' },
+    semestral: { name: 'Semestral', price: '359,40', period: 'mês', displayPrice: '59,90', totalText: 'Total R$ 359,40 / semestre', planType: 'semestral' },
+    anual: { name: 'Anual', price: '598,80', period: 'mês', displayPrice: '49,90', totalText: 'Total R$ 598,80 / ano', planType: 'anual' }
   };
 
   const selectedPlan = planDetails[planParam as keyof typeof planDetails] || planDetails.mensal;

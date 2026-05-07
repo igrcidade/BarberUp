@@ -24,8 +24,8 @@ export default function Barbers() {
   }, []);
 
   const handleSubmit = async () => {
-    if (!formData.name || !formData.email || !formData.commissionService || !formData.commissionProduct) {
-      toast.error('Preencha os campos obrigatórios');
+    if (!formData.name) {
+      toast.error('Preencha o nome do barbeiro');
       return;
     }
 
@@ -33,9 +33,9 @@ export default function Barbers() {
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
-      commissionService: Number(formData.commissionService),
-      commissionProduct: Number(formData.commissionProduct),
-      commission: Number(formData.commissionService), // Backward compatibility
+      commissionService: Number(formData.commissionService) || 0,
+      commissionProduct: Number(formData.commissionProduct) || 0,
+      commission: Number(formData.commissionService) || 0, // Backward compatibility
       active: formData.active,
       updatedAt: new Date().toISOString(),
     };
@@ -137,6 +137,7 @@ export default function Barbers() {
                       className="pl-11 h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold text-sm"
                       value={formData.name} 
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
+                      required
                     />
                   </div>
                 </div>
@@ -177,7 +178,6 @@ export default function Barbers() {
                       className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold text-sm"
                       value={formData.commissionService} 
                       onChange={(e) => setFormData({ ...formData, commissionService: e.target.value })} 
-                      required
                     />
                   </div>
                   <div className="space-y-2">
@@ -187,7 +187,6 @@ export default function Barbers() {
                       className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold text-sm"
                       value={formData.commissionProduct} 
                       onChange={(e) => setFormData({ ...formData, commissionProduct: e.target.value })} 
-                      required
                     />
                   </div>
                 </div>

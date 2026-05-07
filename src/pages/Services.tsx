@@ -26,6 +26,7 @@ import { subscribeToCollection, addDocument, updateDocument, deleteDocument } fr
 import { motion, AnimatePresence } from 'motion/react';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth';
+import { formatCurrencyInput, parseCurrencyInput } from '@/lib/currency';
 
 export default function Services() {
   const { isActive } = useAuth();
@@ -41,7 +42,7 @@ export default function Services() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const data = { ...formData, price: parseFloat(formData.price) };
+    const data = { ...formData, price: parseCurrencyInput(formData.price) };
     if (editingService) {
       await updateDocument('services', editingService.id, data);
     } else {
@@ -56,7 +57,7 @@ export default function Services() {
     setEditingService(service);
     setFormData({ 
       name: service.name, 
-      price: service.price.toString(), 
+      price: formatCurrencyInput(service.price ? service.price.toFixed(2) : ''), 
       category: service.category || 'Cabelo',
       duration: service.duration?.toString() || ''
     });
@@ -123,12 +124,10 @@ export default function Services() {
                   <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Preço (R$)</Label>
                     <Input 
-                      type="number" 
-                      step="0.01" 
+                      type="text" 
                       className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-primary font-bold text-lg"
                       value={formData.price} 
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })} 
-                      required 
+                      onChange={(e) => setFormData({ ...formData, price: formatCurrencyInput(e.target.value) })} 
                     />
                   </div>
                   <div className="space-y-2">

@@ -29,6 +29,7 @@ export default function MasterAdmin() {
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [editUserForm, setEditUserForm] = useState<any>({});
   const [selectedExtension, setSelectedExtension] = useState<number | null>(null);
+  const [selectedPlanToLink, setSelectedPlanToLink] = useState<string>('');
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<any | null>(null);
   const [newTempPassword, setNewTempPassword] = useState('');
@@ -46,6 +47,7 @@ export default function MasterAdmin() {
         subscriptionEnd: selectedUser.subscriptionEnd || ''
       });
       setSelectedExtension(null);
+      setSelectedPlanToLink('');
     }
   }, [selectedUser]);
 
@@ -103,10 +105,28 @@ export default function MasterAdmin() {
     }
   };
 
+  const handleLinkPlan = (plan: string) => {
+    if (!selectedUser) return;
+    
+    setSelectedExtension(null);
+    setSelectedPlanToLink(plan);
+
+    const days = plan === 'mensal' ? 30 : plan === 'semestral' ? 180 : 365;
+    const newEnd = addDays(new Date(), days);
+
+    setEditUserForm({
+       ...editUserForm,
+       subscriptionPlan: plan,
+       subscriptionStatus: 'active',
+       subscriptionEnd: newEnd.toISOString()
+    });
+  };
+
   const handleExtendAccess = async (days: number) => {
     if (!selectedUser) return;
     
     setSelectedExtension(days);
+    setSelectedPlanToLink('');
 
     // Calcula nova data baseado na data atual ou na data de expiração original se ela for futura
     const currentEnd = selectedUser.subscriptionEnd ? new Date(selectedUser.subscriptionEnd) : new Date();
@@ -124,6 +144,7 @@ export default function MasterAdmin() {
     if (!selectedUser) return;
     
     setSelectedExtension(0);
+    setSelectedPlanToLink('');
 
     setEditUserForm({
        ...editUserForm,
@@ -253,10 +274,10 @@ export default function MasterAdmin() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-black uppercase tracking-tighter text-white">ADMIN COMMAND</h1>
+            <h1 className="text-3xl font-black uppercase tracking-tighter text-foreground">ADMIN COMMAND</h1>
             <Badge variant="outline" className="border-primary text-primary bg-primary/5 uppercase font-bold text-[10px] tracking-widest px-3 py-1">Proprietário SaaS</Badge>
           </div>
-          <p className="text-sm font-bold uppercase tracking-widest text-[#009EE3]">Gestão Global de Assinantes</p>
+          <p className="text-sm font-bold uppercase tracking-widest text-primary">Gestão Global de Assinantes</p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
           <Button 
@@ -337,21 +358,21 @@ export default function MasterAdmin() {
       </div>
 
       {/* Indicador de Receita Centralizado */}
-      <Card className="bg-[#009EE3]/10 border border-[#009EE3]/30 shadow-2xl overflow-hidden rounded-3xl">
+      <Card className="bg-primary/5 border border-primary/20 shadow-2xl overflow-hidden rounded-3xl">
         <CardContent className="p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-6">
-            <div className="h-16 w-16 bg-[#009EE3]/20 rounded-2xl flex items-center justify-center text-[#009EE3] shadow-lg">
+            <div className="h-16 w-16 bg-primary/20 rounded-2xl flex items-center justify-center text-primary shadow-lg">
               <DollarSign className="w-8 h-8 font-black" />
             </div>
             <div>
-              <p className="text-xs font-black text-[#009EE3] uppercase tracking-[0.3em] mb-1">Faturamento Mensal (MRR)</p>
-              <h2 className="text-4xl font-black text-white tracking-tighter">
+              <p className="text-xs font-black text-primary uppercase tracking-[0.3em] mb-1">Faturamento Mensal (MRR)</p>
+              <h2 className="text-4xl font-black text-foreground tracking-tighter">
                 R$ {mrr.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </h2>
             </div>
           </div>
           <div className="text-right flex flex-col gap-1 items-end">
-             <Badge className="bg-[#009EE3] text-white px-4 py-1.5 rounded-full font-black text-[10px] tracking-widest">SAAS HEALTH: EXCELLENT</Badge>
+             <Badge className="bg-primary text-primary-foreground px-4 py-1.5 rounded-full font-black text-[10px] tracking-widest">SAAS HEALTH: EXCELLENT</Badge>
              <p className="text-[10px] font-bold text-muted-foreground uppercase mt-2 tracking-widest">Baseado na média mensal por plano ativo</p>
           </div>
         </CardContent>
@@ -476,7 +497,7 @@ export default function MasterAdmin() {
                   </div>
                   <div className="flex flex-col gap-1 pt-1 sm:pt-2 min-w-0">
                     <div className="flex items-center gap-3">
-                      <h2 className="text-xl font-black uppercase tracking-tight text-white truncate max-w-full">{selectedUser.barbershopName}</h2>
+                      <h2 className="text-xl font-black uppercase tracking-tight text-foreground truncate max-w-full">{selectedUser.barbershopName}</h2>
                     </div>
                     <p className="text-xs sm:text-sm font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 mb-2">
                        <Mail className="w-3 h-3 sm:w-4 sm:h-4 text-primary shrink-0" /> <span className="truncate">{selectedUser.email}</span>
@@ -529,11 +550,11 @@ export default function MasterAdmin() {
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Vincular Plano</Label>
                       <Select 
-                        value={editUserForm.subscriptionPlan || 'mensal'} 
-                        onValueChange={(val) => setEditUserForm({ ...editUserForm, subscriptionPlan: val })}
+                        value={selectedPlanToLink} 
+                        onValueChange={(val) => handleLinkPlan(val)}
                       >
                         <SelectTrigger className="h-11 bg-muted/20 border-border rounded-xl font-black uppercase text-xs">
-                          <SelectValue />
+                          <SelectValue placeholder="SELECIONE UM PLANO" />
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border">
                           <SelectItem value="mensal" className="text-xs font-bold uppercase">PLANO MENSAL</SelectItem>
@@ -551,11 +572,11 @@ export default function MasterAdmin() {
                     <Clock className="w-4 h-4" /> CONCEDER ACESSO MANUAL
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" onClick={() => handleZeroAccess()} className={`rounded-xl h-11 px-6 font-black text-[10px] tracking-widest ${selectedExtension === 0 ? 'barber-button-primary border-transparent text-white' : 'border-border bg-muted/10 hover:border-orange-500 hover:text-orange-500'}`}>ZERAR DIAS</Button>
-                    <Button variant="outline" onClick={() => handleExtendAccess(7)} className={`rounded-xl h-11 px-6 font-black text-[10px] tracking-widest ${selectedExtension === 7 ? 'barber-button-primary border-transparent text-white' : 'border-border bg-muted/10 hover:border-[#009EE3] hover:text-[#009EE3]'}`}>+ 07 DIAS</Button>
-                    <Button variant="outline" onClick={() => handleExtendAccess(15)} className={`rounded-xl h-11 px-6 font-black text-[10px] tracking-widest ${selectedExtension === 15 ? 'barber-button-primary border-transparent text-white' : 'border-border bg-muted/10 hover:border-[#009EE3] hover:text-[#009EE3]'}`}>+ 15 DIAS</Button>
-                    <Button variant="outline" onClick={() => handleExtendAccess(30)} className={`rounded-xl h-11 px-6 font-black text-[10px] tracking-widest ${selectedExtension === 30 ? 'barber-button-primary border-transparent text-white' : 'border-border bg-muted/10 hover:border-[#009EE3] hover:text-[#009EE3]'}`}>+ 30 DIAS</Button>
-                    <Button variant="outline" onClick={() => handleExtendAccess(365)} className={`rounded-xl h-11 px-6 font-black text-[10px] tracking-widest ${selectedExtension === 365 ? 'barber-button-primary border-transparent text-white' : 'border-border bg-muted/10 hover:border-lime-500 hover:text-lime-500'}`}>+ 365 DIAS (ANUAL)</Button>
+                    <Button variant="outline" onClick={() => handleZeroAccess()} className={`rounded-xl h-11 px-6 font-black text-[10px] tracking-widest ${selectedExtension === 0 ? 'barber-button-primary border-transparent' : 'border-border bg-muted/10 hover:border-orange-500 hover:text-orange-500'}`}>ZERAR DIAS</Button>
+                    <Button variant="outline" onClick={() => handleExtendAccess(7)} className={`rounded-xl h-11 px-6 font-black text-[10px] tracking-widest ${selectedExtension === 7 ? 'barber-button-primary border-transparent' : 'border-border bg-muted/10 hover:border-primary hover:text-primary'}`}>+ 07 DIAS</Button>
+                    <Button variant="outline" onClick={() => handleExtendAccess(15)} className={`rounded-xl h-11 px-6 font-black text-[10px] tracking-widest ${selectedExtension === 15 ? 'barber-button-primary border-transparent' : 'border-border bg-muted/10 hover:border-primary hover:text-primary'}`}>+ 15 DIAS</Button>
+                    <Button variant="outline" onClick={() => handleExtendAccess(30)} className={`rounded-xl h-11 px-6 font-black text-[10px] tracking-widest ${selectedExtension === 30 ? 'barber-button-primary border-transparent' : 'border-border bg-muted/10 hover:border-primary hover:text-primary'}`}>+ 30 DIAS</Button>
+                    <Button variant="outline" onClick={() => handleExtendAccess(365)} className={`rounded-xl h-11 px-6 font-black text-[10px] tracking-widest ${selectedExtension === 365 ? 'barber-button-primary border-transparent' : 'border-border bg-muted/10 hover:border-lime-500 hover:text-lime-500'}`}>+ 365 DIAS (ANUAL)</Button>
                   </div>
                 </div>
 
@@ -567,7 +588,7 @@ export default function MasterAdmin() {
                   <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-between p-5 bg-destructive/5 border border-destructive/20 rounded-2xl">
                        <div className="space-y-1">
-                          <p className="text-sm font-black text-white uppercase tracking-tight">Bloqueio de Acesso</p>
+                          <p className="text-sm font-black text-foreground uppercase tracking-tight">Bloqueio de Acesso</p>
                           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Impede qualquer interação com o sistema imediatamente</p>
                        </div>
                        <Button 
@@ -585,7 +606,7 @@ export default function MasterAdmin() {
 
                     <div className="flex items-center justify-between p-5 bg-card border border-border rounded-2xl">
                        <div className="space-y-1">
-                          <p className="text-sm font-black text-white uppercase tracking-tight">Reposição de Credenciais</p>
+                          <p className="text-sm font-black text-foreground uppercase tracking-tight">Reposição de Credenciais</p>
                           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Resetar senha do cliente para acesso padrão</p>
                        </div>
                        <Button variant="outline" onClick={() => setIsResetPasswordOpen(true)} className="rounded-xl h-11 border-border hover:border-primary hover:text-primary px-8 font-black text-[10px] tracking-widest transition-all">

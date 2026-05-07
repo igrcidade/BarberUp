@@ -26,6 +26,8 @@ import { subscribeToCollection, addDocument, updateDocument, deleteDocument } fr
 import { motion, AnimatePresence } from 'motion/react';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth';
+import { toast } from 'sonner';
+import { formatCurrencyInput, parseCurrencyInput } from '@/lib/currency';
 
 export default function Products() {
   const { isActive } = useAuth();
@@ -41,10 +43,16 @@ export default function Products() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.name) {
+      toast.error('Preencha o nome do produto');
+      return;
+    }
+
     const data = { 
       ...formData, 
-      price: parseFloat(formData.price),
-      stock: parseInt(formData.stock),
+      price: parseCurrencyInput(formData.price),
+      stock: parseInt(formData.stock) || 0,
       minStock: parseInt(formData.minStock) || 0
     };
     if (editingProduct) {
@@ -62,7 +70,7 @@ export default function Products() {
     setFormData({ 
       name: product.name, 
       brand: product.brand || '',
-      price: product.price.toString(), 
+      price: formatCurrencyInput(product.price ? product.price.toFixed(2) : ''), 
       stock: product.stock.toString(),
       category: product.category || 'Cabelo',
       minStock: product.minStock?.toString() || ''
@@ -118,35 +126,31 @@ export default function Products() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="p-8 space-y-6">
               <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Nome do Produto</Label>
-                    <Input 
-                      className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
-                      value={formData.name} 
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
-                      required 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Marca</Label>
-                    <Input 
-                      className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
-                      value={formData.brand} 
-                      onChange={(e) => setFormData({ ...formData, brand: e.target.value })} 
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Nome do Produto</Label>
+                  <Input 
+                    className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
+                    value={formData.name} 
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Marca</Label>
+                  <Input 
+                    className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
+                    value={formData.brand} 
+                    onChange={(e) => setFormData({ ...formData, brand: e.target.value })} 
+                  />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest ml-1">Preço Venda (R$)</Label>
                     <Input 
-                      type="number" 
-                      step="0.01" 
+                      type="text" 
                       className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-primary font-bold text-lg"
                       value={formData.price} 
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })} 
-                      required 
+                      onChange={(e) => setFormData({ ...formData, price: formatCurrencyInput(e.target.value) })} 
                     />
                   </div>
                   <div className="space-y-2">
@@ -156,7 +160,6 @@ export default function Products() {
                       className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
                       value={formData.stock} 
                       onChange={(e) => setFormData({ ...formData, stock: e.target.value })} 
-                      required 
                     />
                   </div>
                 </div>
@@ -182,7 +185,6 @@ export default function Products() {
                       className="h-12 bg-muted/30 border-border rounded-xl focus:ring-1 focus:ring-primary/20 text-foreground font-bold"
                       value={formData.minStock} 
                       onChange={(e) => setFormData({ ...formData, minStock: e.target.value })} 
-                      required
                     />
                   </div>
                 </div>

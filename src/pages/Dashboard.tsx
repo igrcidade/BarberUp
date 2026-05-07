@@ -13,7 +13,11 @@ import {
   Calendar as CalendarIcon,
   Filter,
   BarChart3,
-  ChevronRight
+  ChevronRight,
+  Search,
+  ChevronDown,
+  User,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
@@ -56,6 +60,11 @@ export default function Dashboard() {
   const [filterType, setFilterType] = useState<string>('month');
   const [isCommissionsModalOpen, setIsCommissionsModalOpen] = useState(false);
   const [isFaturamentoModalOpen, setIsFaturamentoModalOpen] = useState(false);
+  const [isDespesasModalOpen, setIsDespesasModalOpen] = useState(false);
+  const [extratoClientFilter, setExtratoClientFilter] = useState('');
+  const [extratoBarberFilter, setExtratoBarberFilter] = useState('');
+  const [isExtratoClientOpen, setIsExtratoClientOpen] = useState(false);
+  const [isExtratoBarberOpen, setIsExtratoBarberOpen] = useState(false);
 
   useEffect(() => {
     const unsubSales = subscribeToCollection('sales', setSales);
@@ -117,6 +126,14 @@ export default function Dashboard() {
     return acc;
   }, {} as Record<string, {total: number, count: number}>);
 
+  const expensesByCategory = currentPeriodExpenses.reduce((acc, curr) => {
+    const category = curr.category || 'Outros';
+    if (!acc[category]) acc[category] = { total: 0, count: 0 };
+    acc[category].total += (curr.amount || 0);
+    acc[category].count += 1;
+    return acc;
+  }, {} as Record<string, {total: number, count: number}>);
+
   const { theme } = useTheme();
 
   // Rankings
@@ -156,6 +173,34 @@ export default function Dashboard() {
     const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : parseISO(b.createdAt);
     return dateB.getTime() - dateA.getTime();
   });
+
+  const extratoFilteredSales = sortedRecentSales.filter(sale => {
+    const matchClient = (sale.clientName || 'Venda Avulsa').toLowerCase().includes(extratoClientFilter.toLowerCase());
+    const matchBarber = (sale.barberName || 'Sem Barbeiro').toLowerCase().includes(extratoBarberFilter.toLowerCase());
+    return matchClient && matchBarber;
+  });
+
+  const validSalesForClientFilter = extratoBarberFilter 
+    ? sortedRecentSales.filter(sale => (sale.barberName || 'Sem Barbeiro').toLowerCase().includes(extratoBarberFilter.toLowerCase()))
+    : sortedRecentSales;
+
+  const validSalesForBarberFilter = extratoClientFilter
+    ? sortedRecentSales.filter(sale => (sale.clientName || 'Venda Avulsa').toLowerCase().includes(extratoClientFilter.toLowerCase()))
+    : sortedRecentSales;
+
+  const clientFilterIsExactMatch = Array.from(new Set(validSalesForClientFilter.map(s => s.clientName || 'Venda Avulsa')))
+    .some(name => name.toLowerCase() === extratoClientFilter.toLowerCase());
+
+  const filteredClientsForSelect = Array.from(new Set(validSalesForClientFilter.map(s => s.clientName || 'Venda Avulsa')))
+    .filter(name => clientFilterIsExactMatch ? true : name.toLowerCase().includes(extratoClientFilter.toLowerCase()))
+    .map(name => ({ id: name, name }));
+
+  const barberFilterIsExactMatch = Array.from(new Set(validSalesForBarberFilter.map(s => s.barberName || 'Sem Barbeiro')))
+    .some(name => name.toLowerCase() === extratoBarberFilter.toLowerCase());
+
+  const filteredBarbersForSelect = Array.from(new Set(validSalesForBarberFilter.map(s => s.barberName || 'Sem Barbeiro')))
+    .filter(name => barberFilterIsExactMatch ? true : name.toLowerCase().includes(extratoBarberFilter.toLowerCase()))
+    .map(name => ({ id: name, name }));
   
   // Chart data
   const diffDays = differenceInDays(monthEnd, monthStart) + 1;
@@ -271,7 +316,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-6">
         {[
           { title: 'Faturamento', value: totalSales, color: 'text-primary', icon: TrendingUp, detail: `${currentPeriodSales.length} vendas`, isClickable: true, onClick: () => setIsFaturamentoModalOpen(true) },
-          { title: 'Despesas', value: totalExpenses, color: 'text-rose-500', icon: TrendingDown, detail: `${currentPeriodExpenses.length} lançamentos` },
+          { title: 'Despesas', value: totalExpenses, color: 'text-rose-500', icon: TrendingDown, detail: `${currentPeriodExpenses.length} lançamentos`, isClickable: true, onClick: () => setIsDespesasModalOpen(true) },
           { title: 'Comissões', value: totalCommissions, color: 'text-purple-500', icon: TrendingDown, detail: `${barberRanking.filter(b => b.commission > 0).length} barbeiros`, isClickable: true, onClick: () => setIsCommissionsModalOpen(true) },
           { title: 'Lucro Real', value: profit, color: 'text-emerald-500', icon: DollarSign, detail: `Margem: ${totalSales > 0 ? ((profit / totalSales) * 100).toFixed(1) : 0}%` },
           { title: 'Ticket Méd.', value: ticketMedio, color: 'text-orange-500', icon: UserCheck, detail: `${clientCount} clientes` },
@@ -342,6 +387,50 @@ export default function Dashboard() {
               {Object.keys(salesByPaymentMethod).length === 0 && (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">Nenhum faturamento registrado.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDespesasModalOpen} onOpenChange={setIsDespesasModalOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-card border-border shadow-xl rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold uppercase tracking-tight text-foreground flex items-center gap-2">
+              <TrendingDown className="w-5 h-5 text-rose-500" />
+              Relatório de Despesas
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="flex justify-between items-end border-b border-border/50 pb-4">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Total no Período</span>
+              <span className="text-2xl font-black text-rose-500 uppercase tracking-tighter">
+                R$ {totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+            
+            <div className="space-y-3 pr-2 max-h-[50vh] overflow-y-auto custom-scrollbar">
+              {currentPeriodExpenses.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((expense: any) => (
+                <div key={expense.id} className="flex flex-col gap-2 p-4 bg-muted/40 rounded-xl border border-border border-dashed">
+                  <div className="flex justify-between items-start">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-foreground text-sm uppercase tracking-tight">{expense.description}</span>
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1"><CalendarIcon className="w-3 h-3" /> {format(parseISO(expense.date), 'dd/MM/yyyy')}</span>
+                    </div>
+                    <span className="text-sm font-black text-rose-500">
+                      R$ {expense.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <Badge variant="outline" className="text-[8px] font-bold uppercase w-fit bg-card">
+                    {expense.category || 'Outros'}
+                  </Badge>
+                </div>
+              ))}
+              
+              {currentPeriodExpenses.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">Nenhuma despesa registrada.</p>
                 </div>
               )}
             </div>
@@ -594,14 +683,94 @@ export default function Dashboard() {
       {/* Analytical Table */}
       <Card className="border-border bg-card shadow-sm rounded-3xl overflow-hidden">
         <CardHeader className="p-8 border-b border-border bg-muted/20">
-          <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
+          <div className="flex flex-col xl:flex-row xl:items-center gap-6 justify-between">
             <div className="flex items-center gap-4">
-              <div className="p-2.5 bg-muted rounded-xl ring-1 ring-border">
+              <div className="p-2.5 bg-muted rounded-xl ring-1 ring-border shrink-0">
                 <BarChart3 className="w-5 h-5 text-primary" />
               </div>
               <CardTitle className="text-lg font-bold text-foreground uppercase tracking-tight">Extrato Recente</CardTitle>
             </div>
-            <Button size="sm" className="rounded-lg text-[10px] font-bold uppercase tracking-widest px-6 h-10">Exportar Logs</Button>
+            
+            <div className="flex flex-col sm:flex-row gap-4 w-full xl:w-auto">
+              {/* Cliente Filter */}
+              <div className="relative w-full sm:w-[220px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Pesquisar cliente..." 
+                  className="pl-9 pr-8 h-10 bg-card border-border rounded-lg text-xs focus:ring-1 focus:ring-primary/20 transition-all font-medium"
+                  value={extratoClientFilter}
+                  onFocus={(e) => { setIsExtratoClientOpen(true); e.target.select(); }}
+                  onBlur={() => setTimeout(() => setIsExtratoClientOpen(false), 200)}
+                  onChange={(e) => setExtratoClientFilter(e.target.value)}
+                />
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                {isExtratoClientOpen && (
+                  <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-xl shadow-xl overflow-hidden max-h-[200px] overflow-y-auto">
+                    {filteredClientsForSelect.map(c => (
+                      <div 
+                        key={c.id} 
+                        className="p-3 text-xs cursor-pointer hover:bg-muted border-b border-border last:border-0"
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                          setExtratoClientFilter(c.name);
+                          setIsExtratoClientOpen(false);
+                        }}
+                      >
+                        <span className="font-bold uppercase tracking-tight text-foreground">{c.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Barbeiro Filter */}
+              <div className="relative w-full sm:w-[220px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Pesquisar barbeiro..." 
+                  className="pl-9 pr-8 h-10 bg-card border-border rounded-lg text-xs focus:ring-1 focus:ring-primary/20 transition-all font-medium"
+                  value={extratoBarberFilter}
+                  onFocus={(e) => { setIsExtratoBarberOpen(true); e.target.select(); }}
+                  onBlur={() => setTimeout(() => setIsExtratoBarberOpen(false), 200)}
+                  onChange={(e) => setExtratoBarberFilter(e.target.value)}
+                />
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                {isExtratoBarberOpen && (
+                  <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-xl shadow-xl overflow-hidden max-h-[200px] overflow-y-auto">
+                    {filteredBarbersForSelect.map(b => (
+                      <div 
+                        key={b.id} 
+                        className="p-3 text-xs cursor-pointer hover:bg-muted border-b border-border last:border-0"
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                          setExtratoBarberFilter(b.name);
+                          setIsExtratoBarberOpen(false);
+                        }}
+                      >
+                        <span className="font-bold uppercase tracking-tight text-foreground">{b.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {(extratoClientFilter || extratoBarberFilter) && (
+                <Button 
+                  size="icon" 
+                  variant="outline" 
+                  className="h-10 w-10 shrink-0 rounded-lg text-muted-foreground hover:text-rose-500 hover:border-rose-500/50 hover:bg-rose-500/10 transition-colors"
+                  onClick={() => {
+                    setExtratoClientFilter('');
+                    setExtratoBarberFilter('');
+                  }}
+                  title="Limpar Filtros"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+
+              <Button size="sm" className="rounded-lg text-[10px] font-bold uppercase tracking-widest px-6 h-10 w-full sm:w-auto shrink-0">Exportar Logs</Button>
+            </div>
           </div>
         </CardHeader>
         <div className="overflow-x-auto hidden md:block">
@@ -610,12 +779,13 @@ export default function Dashboard() {
               <TableRow className="bg-muted/40 hover:bg-transparent">
                 <TableHead className="w-40 pl-8 text-[10px] font-bold uppercase text-muted-foreground py-4 tracking-widest">Data</TableHead>
                 <TableHead className="text-[10px] font-bold uppercase text-muted-foreground py-4 tracking-widest">Cliente</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-muted-foreground py-4 tracking-widest">Barbeiro</TableHead>
                 <TableHead className="text-[10px] font-bold uppercase text-muted-foreground py-4 tracking-widest">Procedimentos</TableHead>
                 <TableHead className="text-[10px] font-bold uppercase text-muted-foreground py-4 tracking-widest text-right pr-8">Faturamento</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedRecentSales.slice(0, 10).map((sale) => {
+              {extratoFilteredSales.slice(0, 20).map((sale) => {
                 const sDate = sale.createdAt;
                 if (!sDate) return null;
                 const date = sDate.toDate ? sDate.toDate() : parseISO(sale.createdAt);
@@ -631,6 +801,9 @@ export default function Dashboard() {
                         </div>
                         <span className="text-xs uppercase tracking-tight">{sale.clientName}</span>
                       </div>
+                    </TableCell>
+                    <TableCell className="font-bold text-foreground py-5">
+                      <span className="text-[11px] uppercase tracking-tight text-muted-foreground">{sale.barberName || 'Sem Barbeiro'}</span>
                     </TableCell>
                     <TableCell className="py-5">
                       <div className="flex gap-2 flex-wrap">
@@ -655,7 +828,7 @@ export default function Dashboard() {
 
         {/* Mobile View Extrato */}
         <div className="md:hidden flex flex-col divide-y divide-border/50">
-          {sortedRecentSales.slice(0, 10).map((sale) => {
+          {extratoFilteredSales.slice(0, 20).map((sale) => {
             const sDate = sale.createdAt;
             if (!sDate) return null;
             const date = sDate.toDate ? sDate.toDate() : parseISO(sale.createdAt);
@@ -668,7 +841,8 @@ export default function Dashboard() {
                     </div>
                     <div className="flex flex-col">
                       <span className="font-bold text-sm uppercase tracking-tight leading-none mb-1">{sale.clientName}</span>
-                      <span className="text-[10px] uppercase text-muted-foreground font-bold tracking-widest">{format(date, 'dd/MM/yyyy HH:mm')}</span>
+                      <span className="text-[10px] uppercase text-primary font-black tracking-widest mb-1 leading-none">{sale.barberName || 'Sem Barbeiro'}</span>
+                      <span className="text-[10px] uppercase text-muted-foreground font-bold tracking-widest leading-none">{format(date, 'dd/MM/yyyy HH:mm')}</span>
                     </div>
                   </div>
                   <div className="flex flex-col items-end">
