@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle2, CreditCard, Lock, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, CreditCard, Lock, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth';
@@ -63,6 +63,20 @@ export default function CheckoutPlan() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-xl space-y-6">
         
+        <div className="flex justify-start mb-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate('/app/subscription')}
+            className="text-muted-foreground hover:text-white font-bold uppercase tracking-widest text-[10px] flex items-center gap-2 group p-0"
+          >
+            <div className="w-6 h-6 rounded-lg bg-muted flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+              <ArrowLeft className="w-3.5 h-3.5" /> 
+            </div>
+            Voltar para o App
+          </Button>
+        </div>
+
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold uppercase tracking-tight">Finalizar Pagamento</h1>
           <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest text-[#009EE3]">Acesso BarberUp</p>
@@ -118,6 +132,17 @@ export default function CheckoutPlan() {
               <p className="text-center text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-4 flex items-center justify-center gap-1">
                 <Lock className="w-3 h-3" /> Transação Criptografada
               </p>
+
+              <div className="mt-8 pt-6 border-t border-border/30 flex justify-center">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => navigate('/app/subscription')}
+                  className="text-muted-foreground hover:text-white font-bold uppercase tracking-widest text-[10px] flex items-center gap-2"
+                >
+                  Cancelar e Voltar para o App
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
