@@ -143,6 +143,10 @@ export default function Sales() {
 
   const finalizeSale = async () => {
     if (currentSale.length === 0 || isSubmitting) return;
+    
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
 
     setIsSubmitting(true);
     try {
@@ -211,11 +215,13 @@ export default function Sales() {
       setServiceSearch('');
       setProductSearch('');
       setPaymentMethod('Dinheiro');
-      setIsSuccessOpen(true);
+      setTimeout(() => {
+        setIsSuccessOpen(true);
+        setIsSubmitting(false);
+      }, 300);
     } catch (error: any) {
       console.error(error);
       toast.error('Ocorreu um erro ao finalizar a venda.', { description: error?.message || 'Tente novamente mais tarde.' });
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -715,10 +721,16 @@ export default function Sales() {
                   type="button"
                   className="barber-button-primary w-full h-16 max-md:h-14 text-sm flex items-center justify-center gap-3 disabled:opacity-50 transition-all shadow-lg shadow-primary/20 touch-manipulation" 
                   disabled={currentSale.length === 0 || !isActive || isSubmitting}
+                  onPointerDown={(e) => {
+                    if (currentSale.length > 0 && isActive && !isSubmitting) {
+                      e.preventDefault();
+                      finalizeSale();
+                    }
+                  }}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    finalizeSale();
+                    if (!isSubmitting) finalizeSale();
                   }}
                 >
                   <CheckCircle2 className="w-5 h-5 max-md:w-4 max-md:h-4" /> 
