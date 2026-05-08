@@ -96,6 +96,11 @@ app.post('/api/create-checkout', async (req, res) => {
           failure: `${appUrl}/app/subscription`,
           pending: `${appUrl}/checkout/pending`,
         },
+        payment_methods: {
+          excluded_payment_methods: [
+            { id: "pix" }
+          ]
+        },
         auto_return: "approved",
         statement_descriptor: "BARBERUP"
       }
