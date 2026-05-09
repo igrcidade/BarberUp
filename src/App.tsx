@@ -29,10 +29,10 @@ function ScrollToTop() {
   return null;
 }
 import { auth } from './lib/firebase';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Mail } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { ThemeProvider } from './components/ThemeProvider';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 
 const Landing = React.lazy(() => import('./pages/Landing'));
 const Login = React.lazy(() => import('./pages/Login'));
@@ -58,6 +58,64 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
+
+  // Require email verification, unless it's Master Admin
+  if (!user.emailVerified && !isAdmin) {
+    const handleResend = async () => {
+      try {
+        const mailRes = await fetch('/api/send-welcome-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: user.email,
+            name: profile?.name || user.displayName || 'Usuário',
+            shopName: profile?.barbershopName || 'sua barbearia'
+          })
+        });
+        if (mailRes.ok) {
+          toast.success('E-mail reenviado com sucesso! Verifique sua caixa de entrada e spam.');
+        } else {
+          toast.error('Erro ao reenviar e-mail de confirmação.');
+        }
+      } catch (e) {
+        toast.error('Erro de rede ao reenviar e-mail.');
+      }
+    };
+
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background p-4 text-center">
+        <div className="max-w-md space-y-6">
+          <div className="w-20 h-20 bg-orange-500/10 rounded-3xl flex items-center justify-center text-orange-500 mx-auto shadow-2xl">
+            <Mail className="w-10 h-10" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-3xl font-black uppercase tracking-tighter text-white">E-MAIL NÃO VERIFICADO</h1>
+            <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground leading-relaxed">
+              Verifique sua caixa de entrada e confirme seu e-mail para acessar o BarberUp.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <Button 
+              className="w-full h-12 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-black uppercase tracking-widest"
+              onClick={() => {
+                auth.signOut();
+                window.location.href = '/login';
+              }}
+            >
+              VOLTAR PARA O LOGIN
+            </Button>
+            <Button 
+              variant="outline"
+              className="w-full h-12 border-orange-500/20 text-orange-500 hover:bg-orange-500/10 rounded-xl font-black uppercase tracking-widest"
+              onClick={handleResend}
+            >
+              REENVIAR E-MAIL DE CONFIRMAÇÃO
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Se for Master Admin, acesso total sempre
   if (isAdmin) return <>{children}</>;

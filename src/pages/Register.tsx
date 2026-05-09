@@ -81,7 +81,7 @@ export default function Register() {
 
       // Envia e-mail de Boas Vindas via backend com Nodemailer
       try {
-        await fetch('/api/send-welcome-email', {
+        const mailRes = await fetch('/api/send-welcome-email', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -92,8 +92,15 @@ export default function Register() {
             shopName: shopName
           })
         });
+        
+        if (!mailRes.ok) {
+          const errData = await mailRes.json().catch(() => null);
+          console.error('Falha no servidor ao enviar e-mail de boas vindas:', errData);
+          toast.error('Erro ao enviar e-mail de confirmação. ' + (errData?.error || ''));
+        }
       } catch (mailError) {
-        console.error('Falha ao solicitar envio de e-mail de boas vindas:', mailError);
+        console.error('Falha de rede ao solicitar envio de e-mail de boas vindas:', mailError);
+        toast.error('Gargalo na rede ao disparar o e-mail central.');
       }
 
       await auth.signOut();
