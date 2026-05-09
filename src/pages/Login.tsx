@@ -48,7 +48,6 @@ export default function Login() {
       if (!user.emailVerified && !isLegacyUser) {
         await signOut(auth);
         setError('Por favor, confirme seu e-mail antes de fazer login. Verifique sua caixa de entrada ou aba de spam.');
-        setLoading(false);
         return;
       }
 
@@ -66,7 +65,7 @@ export default function Login() {
         setError('Credenciais inválidas. Verifique seu e-mail e senha.');
       }
     } finally {
-      if (loading) setLoading(false);
+      setLoading(false);
     }
   };
 
