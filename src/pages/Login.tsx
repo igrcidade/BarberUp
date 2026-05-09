@@ -43,7 +43,7 @@ export default function Login() {
       const user = userCredential.user;
       
       const creationTime = user.metadata.creationTime ? new Date(user.metadata.creationTime).getTime() : 0;
-      const isLegacyUser = creationTime > 0 && creationTime < new Date('2026-05-09T03:00:00Z').getTime();
+      const isLegacyUser = creationTime > 0 && creationTime < new Date('2026-05-09T02:10:00Z').getTime();
 
       if (!user.emailVerified && !isLegacyUser) {
         await signOut(auth);

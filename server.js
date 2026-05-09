@@ -243,9 +243,7 @@ app.post('/api/send-welcome-email', async (req, res) => {
 
     let link;
     try {
-      link = await admin.auth().generateEmailVerificationLink(email, {
-        url: 'https://usebarberup.com/login'
-      });
+      link = await admin.auth().generateEmailVerificationLink(email);
     } catch (authError) {
       console.error("Admin Auth Error:", authError);
       return res.status(500).json({ 

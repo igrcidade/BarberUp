@@ -61,7 +61,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   // Require email verification, unless it's Master Admin
   const creationTime = user.metadata?.creationTime ? new Date(user.metadata.creationTime).getTime() : 0;
-  const isLegacyUser = creationTime > 0 && creationTime < new Date('2026-05-09T03:00:00Z').getTime();
+  const isLegacyUser = creationTime > 0 && creationTime < new Date('2026-05-09T02:10:00Z').getTime();
 
   if (!user.emailVerified && !isAdmin && !isLegacyUser) {
     const handleResend = async () => {
