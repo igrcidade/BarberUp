@@ -56,7 +56,7 @@ export default function Login() {
     try {
       // Firebase password reset
       auth.languageCode = 'pt-BR';
-      await sendPasswordResetEmail(auth, resetEmail.trim(), { url: window.location.origin + '/login' });
+      await sendPasswordResetEmail(auth, resetEmail.trim());
       setResetSuccess(true);
     } catch (err: any) {
       if (err.code === 'auth/user-not-found') {
