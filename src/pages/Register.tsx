@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc, collection, addDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Scissors, AlertCircle, ChevronLeft, ArrowRight, User, Mail, Lock, Building, CreditCard } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -76,6 +77,38 @@ export default function Register() {
         subscriptionStatus: selectedPlan ? 'pending' : 'trial',
         subscriptionEnd: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         createdAt: new Date().toISOString()
+      });
+
+      // Envia e-mail de Boas Vindas caso a Extensão "Trigger Email" esteja configurada no Firebase
+      try {
+        await addDoc(collection(db, 'mail'), {
+          to: email.trim(),
+          message: {
+            subject: 'Bem-vindo ao BarberUp! Seu acesso de Elite está liberado ✂️',
+            html: `
+              <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; color: #333;">
+                <h2 style="color: #f97316;">Fala ${name}, seja muito bem-vindo!</h2>
+                <p>É uma grande honra ter a <strong>${shopName}</strong> fazendo parte da plataforma BarberUp.</p>
+                <p>Nosso sistema foi construído para barbearias de elite que buscam dominar o mercado, focar na retenção de clientes e escalar seus lucros com previsibilidade.</p>
+                <p>Para acessar seu painel gerencial, clique no link abaixo:</p>
+                <p>
+                  <a href="https://usebarberup.com" style="display: inline-block; background-color: #bef264; color: #000; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px;">Acessar Meu Império</a>
+                </p>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 24px 0;" />
+                <p style="font-size: 12px; color: #999;">
+                  Se você tiver qualquer dúvida, basta responder a este e-mail ou entrar em contato com nosso suporte via contato@usebarberup.com.
+                </p>
+                <p style="font-size: 12px; color: #999;">BarberUp Premium Engine</p>
+              </div>
+            `
+          }
+        });
+      } catch (mailError) {
+        console.error('Falha ao registrar e-mail na coleção mail:', mailError);
+      }
+
+      toast.success('Conta criada com sucesso!', { 
+        description: 'Enviamos um e-mail de boas-vindas para você.'
       });
 
       if (selectedPlan) {
