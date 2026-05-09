@@ -79,33 +79,21 @@ export default function Register() {
         createdAt: new Date().toISOString()
       });
 
-      // Envia e-mail de Boas Vindas caso a Extensão "Trigger Email" esteja configurada no Firebase
+      // Envia e-mail de Boas Vindas via backend com Nodemailer
       try {
-        await addDoc(collection(db, 'mail'), {
-          to: email.trim(),
-          message: {
-            from: 'BarberUp <contato@usebarberup.com>',
-            subject: 'Bem-vindo ao BarberUp! Seu acesso de Elite está liberado ✂️',
-            html: `
-              <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; color: #333;">
-                <h2 style="color: #f97316;">Fala ${name}, seja muito bem-vindo!</h2>
-                <p>É uma grande honra ter a <strong>${shopName}</strong> fazendo parte da plataforma BarberUp.</p>
-                <p>Nosso sistema foi construído para barbearias de elite que buscam dominar o mercado, focar na retenção de clientes e escalar seus lucros com previsibilidade.</p>
-                <p>Para acessar seu painel gerencial, clique no link abaixo:</p>
-                <p>
-                  <a href="https://usebarberup.com" style="display: inline-block; background-color: #bef264; color: #000; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px;">Acessar Meu Império</a>
-                </p>
-                <hr style="border: 0; border-top: 1px solid #eee; margin: 24px 0;" />
-                <p style="font-size: 12px; color: #999;">
-                  Se você tiver qualquer dúvida, basta responder a este e-mail ou entrar em contato com nosso suporte via contato@usebarberup.com.
-                </p>
-                <p style="font-size: 12px; color: #999;">BarberUp Premium Engine</p>
-              </div>
-            `
-          }
+        await fetch('/api/send-welcome-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: email.trim(),
+            name: name,
+            shopName: shopName
+          })
         });
       } catch (mailError) {
-        console.error('Falha ao registrar e-mail na coleção mail:', mailError);
+        console.error('Falha ao solicitar envio de e-mail de boas vindas:', mailError);
       }
 
       toast.success('Conta criada com sucesso!', { 

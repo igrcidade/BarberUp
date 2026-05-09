@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
 import fs from 'fs';
+import nodemailer from 'nodemailer';
 
 dotenv.config();
 
@@ -15,6 +16,7 @@ const __dirname = path.dirname(__filename);
 
 // Initialize Firebase Admin
 let db;
+let adminError = null;
 try {
   const fbConfigPath = path.resolve(__dirname, 'firebase-applet-config.json');
   let fbConfig = null;
@@ -43,11 +45,27 @@ try {
 
   console.log('✅ Firebase Admin initialized, db exists:', !!db, 'db.collection exists:', !!db?.collection);
 } catch (error) {
+  adminError = error.message;
   console.error('❌ Firebase Admin init error:', error);
 }
 
 const app = express();
+app.get('/api/admin-status', (req, res) => {
+  res.json({ error: adminError, appNames: admin.apps.map(a => a?.name) });
+});
 const PORT = process.env.PORT || 3000;
+
+// Nodemailer setup
+const transporter = nodemailer.createTransport({
+  host: 'smtp.hostinger.com',
+  port: 465,
+  secure: true,
+  auth: {
+    user: 'contato@usebarberup.com',
+    pass: process.env.SMTP_PASSWORD // Configurar esta variável no Hostinger
+  }
+});
+
 
 app.use(cors());
 // Need raw body for stripe/webhook if any, but regular json for everything else
@@ -113,7 +131,7 @@ app.post('/api/create-checkout', async (req, res) => {
   }
 });
 
-// Request Password Reset via Email Extension
+// Request Password Reset via Nodemailer
 app.post('/api/create-password-reset-email', async (req, res) => {
   try {
     const { email } = req.body;
@@ -121,38 +139,76 @@ app.post('/api/create-password-reset-email', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Email is required' });
     }
 
+    if (!admin.apps.length) {
+      return res.status(500).json({ success: false, error: 'Administrador do Firebase (Admin SDK) não configurado no servidor. Por favor, adicione a variável FIREBASE_SERVICE_ACCOUNT_KEY no Hostinger.' });
+    }
+
     // Attempt to generate the link
     const link = await admin.auth().generatePasswordResetLink(email);
 
-    // Save to 'mail' collection to trigger the extension
-    await db.collection('mail').add({
+    // Send email via nodemailer
+    await transporter.sendMail({
+      from: '"BarberUp" <contato@usebarberup.com>',
       to: email,
-      message: {
-        from: 'BarberUp <contato@usebarberup.com>',
-        subject: 'Redefinição de Senha - BarberUp',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; color: #333;">
-            <h2 style="color: #f97316;">Recuperação de Acesso</h2>
-            <p>Recebemos uma solicitação para redefinir a senha da sua conta BarberUp.</p>
-            <p>Para criar uma nova senha, clique no botão abaixo:</p>
-            <p style="margin: 30px 0;">
-              <a href="${link}" style="display: inline-block; background-color: #f97316; color: #fff; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px;">Redefinir Senha</a>
-            </p>
-            <p>Se você não solicitou esta alteração, pode ignorar este e-mail.</p>
-            <hr style="border: 0; border-top: 1px solid #eee; margin: 24px 0;" />
-            <p style="font-size: 12px; color: #999;">BarberUp Premium Engine</p>
-          </div>
-        `
-      }
+      subject: 'Redefinição de Senha - BarberUp',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; color: #333;">
+          <h2 style="color: #f97316;">Recuperação de Acesso</h2>
+          <p>Recebemos uma solicitação para redefinir a senha da sua conta BarberUp.</p>
+          <p>Para criar uma nova senha, clique no botão abaixo:</p>
+          <p style="margin: 30px 0;">
+            <a href="${link}" style="display: inline-block; background-color: #f97316; color: #fff; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px;">Redefinir Senha</a>
+          </p>
+          <p>Se você não solicitou esta alteração, pode ignorar este e-mail.</p>
+          <hr style="border: 0; border-top: 1px solid #eee; margin: 24px 0;" />
+          <p style="font-size: 12px; color: #999;">BarberUp Premium Engine</p>
+        </div>
+      `
     });
 
     res.json({ success: true });
   } catch (error) {
     if (error.code === 'auth/user-not-found') {
-      // Return success to avoid telling user enumeration, or just pass it back
       return res.json({ success: true });
     }
     console.error('Error creating password reset email:', error);
+    res.status(500).json({ success: false, error: "Erro ao enviar e-mail. Verifique se a variável SMTP_PASSWORD e FIREBASE_SERVICE_ACCOUNT_KEY estão configuradas no servidor." });
+  }
+});
+
+// Send Welcome Email via Nodemailer
+app.post('/api/send-welcome-email', async (req, res) => {
+  try {
+    const { email, name, shopName } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'Email is required' });
+    }
+
+    await transporter.sendMail({
+      from: '"BarberUp" <contato@usebarberup.com>',
+      to: email,
+      subject: 'Bem-vindo ao BarberUp! Seu acesso de Elite está liberado ✂️',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; color: #333;">
+          <h2 style="color: #f97316;">Fala ${name}, seja muito bem-vindo!</h2>
+          <p>É uma grande honra ter a <strong>${shopName}</strong> fazendo parte da plataforma BarberUp.</p>
+          <p>Nosso sistema foi construído para barbearias de elite que buscam dominar o mercado, focar na retenção de clientes e escalar seus lucros com previsibilidade.</p>
+          <p>Para acessar seu painel gerencial, clique no link abaixo:</p>
+          <p>
+            <a href="https://usebarberup.com" style="display: inline-block; background-color: #bef264; color: #000; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px;">Acessar Meu Império</a>
+          </p>
+          <hr style="border: 0; border-top: 1px solid #eee; margin: 24px 0;" />
+          <p style="font-size: 12px; color: #999;">
+            Se você tiver qualquer dúvida, basta responder a este e-mail ou entrar em contato com nosso suporte via contato@usebarberup.com.
+          </p>
+          <p style="font-size: 12px; color: #999;">BarberUp Premium Engine</p>
+        </div>
+      `
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error sending welcome email:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
