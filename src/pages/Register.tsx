@@ -96,14 +96,16 @@ export default function Register() {
         console.error('Falha ao solicitar envio de e-mail de boas vindas:', mailError);
       }
 
+      await auth.signOut();
+
       toast.success('Conta criada com sucesso!', { 
-        description: 'Enviamos um e-mail de boas-vindas para você.'
+        description: 'Enviamos um e-mail de confirmação para você. Verifique sua caixa de entrada ou spam.'
       });
 
       if (selectedPlan) {
-        navigate(`/checkout?plan=${selectedPlan}`);
+        navigate(`/login?message=confirm-email&plan=${selectedPlan}`);
       } else {
-        navigate('/app/dashboard');
+        navigate('/login?message=confirm-email');
       }
     } catch (err: any) {
       console.error(err);

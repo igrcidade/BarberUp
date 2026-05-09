@@ -213,7 +213,8 @@ app.post('/api/create-password-reset-email', async (req, res) => {
           </p>
           <p>Se você não solicitou esta alteração, pode ignorar este e-mail.</p>
           <hr style="border: 0; border-top: 1px solid #eee; margin: 24px 0;" />
-          <p style="font-size: 12px; color: #999;">BarberUp Premium Engine</p>
+          <p style="font-size: 14px; color: #666; text-align: center;">Um grande abraço,</p>
+          <p style="font-size: 16px; font-weight: bold; color: #111; text-align: center; margin-top: 5px;">Equipe BarberUp</p>
         </div>
       `
     });
@@ -228,7 +229,7 @@ app.post('/api/create-password-reset-email', async (req, res) => {
   }
 });
 
-// Send Welcome Email via Nodemailer
+// Send Verification / Welcome Email via Nodemailer
 app.post('/api/send-welcome-email', async (req, res) => {
   try {
     const { email, name, shopName } = req.body;
@@ -236,24 +237,51 @@ app.post('/api/send-welcome-email', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Email is required' });
     }
 
+    if (!admin.apps.length) {
+      return res.status(500).json({ success: false, error: `SDK Admin não configurado para gerar link.` });
+    }
+
+    let link;
+    try {
+      link = await admin.auth().generateEmailVerificationLink(email, {
+        url: 'https://usebarberup.com/login'
+      });
+    } catch (authError) {
+      console.error("Admin Auth Error:", authError);
+      return res.status(500).json({ 
+        success: false, 
+        error: `Erro ao gerar link de verificação. (Erro: ${authError.message})`
+      });
+    }
+
     await transporter.sendMail({
       from: '"BarberUp" <contato@usebarberup.com>',
       to: email,
-      subject: 'Bem-vindo ao BarberUp! Seu acesso de Elite está liberado ✂️',
+      subject: 'Bem-vindo(a) à Elite do BarberUp! Confirme seu acesso ✂️🚀',
       html: `
-        <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; color: #333;">
-          <h2 style="color: #f97316;">Fala ${name}, seja muito bem-vindo!</h2>
-          <p>É uma grande honra ter a <strong>${shopName}</strong> fazendo parte da plataforma BarberUp.</p>
-          <p>Nosso sistema foi construído para barbearias de elite que buscam dominar o mercado, focar na retenção de clientes e escalar seus lucros com previsibilidade.</p>
-          <p>Para acessar seu painel gerencial, clique no link abaixo:</p>
-          <p>
-            <a href="https://usebarberup.com" style="display: inline-block; background-color: #bef264; color: #000; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px;">Acessar Meu Império</a>
-          </p>
-          <hr style="border: 0; border-top: 1px solid #eee; margin: 24px 0;" />
-          <p style="font-size: 12px; color: #999;">
-            Se você tiver qualquer dúvida, basta responder a este e-mail ou entrar em contato com nosso suporte via contato@usebarberup.com.
-          </p>
-          <p style="font-size: 12px; color: #999;">BarberUp Premium Engine</p>
+        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-w: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+          <div style="text-align: center; padding: 20px 0;">
+            <h2 style="color: #f97316; margin-bottom: 5px;">Acesso Quase Liberado, ${name}! 🚀</h2>
+          </div>
+          
+          <p style="font-size: 16px;">Bem-vindo(a) ao <strong>BarberUp</strong>!</p>
+          
+          <p style="font-size: 16px;">A partir de agora, a <strong>${shopName}</strong> está pronta para jogar o jogo da alta performance. Criamos o BarberUp para ser sua máquina de crescimento.</p>
+          
+          <p style="font-size: 16px;">Mas antes de dominar seu mercado e começar a escalar lucros, precisamos apenas que você <strong>confirme seu e-mail</strong> clicando no botão abaixo:</p>
+          
+          <div style="text-align: center; margin: 40px 0;">
+            <a href="${link}" style="display: inline-block; background-color: #f97316; color: #ffffff; padding: 16px 32px; text-decoration: none; font-weight: bold; font-size: 16px; border-radius: 8px; letter-spacing: 1px; text-transform: uppercase;">Confirmar E-mail ✂️</a>
+          </div>
+          
+          <p style="font-size: 16px;">Estamos lado a lado com você nessa jornada. Qualquer dúvida, é só responder a este e-mail.</p>
+          
+          <p style="font-size: 16px;">Vamos pra cima! 🔥</p>
+          
+          <hr style="border: 0; border-top: 1px solid #eaeaea; margin: 30px 0;" />
+          
+          <p style="font-size: 14px; color: #666; text-align: center;">Um grande abraço,</p>
+          <p style="font-size: 16px; font-weight: bold; color: #111; text-align: center; margin-top: 5px;">Equipe BarberUp</p>
         </div>
       `
     });

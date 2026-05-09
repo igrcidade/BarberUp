@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   
   // States para recuperação de senha
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
@@ -24,14 +25,36 @@ export default function Login() {
   const [resetError, setResetError] = useState('');
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('message') === 'confirm-email') {
+      setSuccessMsg('Cadastro realizado! Por favor, verifique seu e-mail para confirmar a conta antes de fazer o login.');
+    }
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccessMsg('');
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      navigate('/app/dashboard');
+      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      
+      if (!userCredential.user.emailVerified) {
+        await signOut(auth);
+        setError('Por favor, confirme seu e-mail antes de fazer login. Verifique sua caixa de entrada ou aba de spam.');
+        setLoading(false);
+        return;
+      }
+
+      // Check if we have a plan to redirect to checkout
+      const plan = searchParams.get('plan');
+      if (plan) {
+        navigate(`/checkout?plan=${plan}`);
+      } else {
+        navigate('/app/dashboard');
+      }
     } catch (err: any) {
       if (err.code === 'auth/operation-not-allowed') {
         setError('O login por e-mail/senha não está habilitado no Firebase Console.');
@@ -39,7 +62,7 @@ export default function Login() {
         setError('Credenciais inválidas. Verifique seu e-mail e senha.');
       }
     } finally {
-      setLoading(false);
+      if (loading) setLoading(false);
     }
   };
 
@@ -110,6 +133,17 @@ export default function Login() {
 
             <form onSubmit={handleLogin} className="space-y-3">
               <AnimatePresence>
+                {successMsg && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.9, height: 0 }}
+                    animate={{ opacity: 1, scale: 1, height: 'auto' }}
+                    exit={{ opacity: 0, scale: 0.9, height: 0 }}
+                    className="bg-green-500/10 border border-green-500/20 text-green-500 p-3 rounded-xl flex items-center gap-2 text-xs font-medium overflow-hidden mb-2"
+                  >
+                    <CheckCircle2 className="w-5 h-5 shrink-0" />
+                    <span>{successMsg}</span>
+                  </motion.div>
+                )}
                 {error && (
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.9, height: 0 }}
