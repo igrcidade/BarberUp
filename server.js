@@ -26,33 +26,47 @@ try {
 
   if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
     try {
-      let keyString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+      let keyString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY.trim();
       
-      // Limpeza de escapes acidentais que a Hostinger ou outros painéis podem colocar
-      keyString = keyString.trim();
-      if (keyString.startsWith('\\{')) {
-        keyString = keyString.substring(1);
-      }
-      if (keyString.startsWith("'{") && keyString.endsWith("}'")) {
-         keyString = keyString.slice(1, -1);
-      }
-      if (keyString.startsWith('"{') && keyString.endsWith('}"')) {
-         keyString = JSON.parse(keyString); // Pode ser um JSON em texto escapado duplamente
-      }
+      // Attempt to fix common Hostinger escaping issues:
+      // Remove escaping from braces and quotes if present
+      keyString = keyString.replace(/\\{/g, '{').replace(/\\}/g, '}');
       
-      if (typeof keyString === 'string') {
-        const firstBrace = keyString.indexOf('{');
-        const lastBrace = keyString.lastIndexOf('}');
-        if (firstBrace !== -1 && lastBrace !== -1) {
-          keyString = keyString.substring(firstBrace, lastBrace + 1);
+      // If it's wrapped in single quotes, remove them
+      if (keyString.startsWith("'") && keyString.endsWith("'")) {
+        keyString = keyString.slice(1, -1);
+      }
+
+      // Find the JSON block
+      const startIdx = keyString.indexOf('{');
+      const endIdx = keyString.lastIndexOf('}');
+      if (startIdx !== -1 && endIdx !== -1) {
+        keyString = keyString.substring(startIdx, endIdx + 1);
+      }
+
+      // Try to unescape double quotes if they were escaped like \"
+      // But avoid messing up \\n inside private_key by doing a quick test
+      try {
+        JSON.parse(keyString);
+      } catch (e) {
+        if (keyString.includes('\\"')) {
+          keyString = keyString.replace(/\\"/g, '"');
         }
       }
 
-      const serviceAccount = typeof keyString === 'string' ? JSON.parse(keyString) : keyString;
-      // Sometimes hostinger or other platforms strip actual newlines or double-escape them.
-      if (serviceAccount.private_key) {
+      let serviceAccount;
+      try {
+        serviceAccount = JSON.parse(keyString);
+      } catch (parseErr) {
+        // As a last ditch effort, try to run it via Function to parse JS object string
+        serviceAccount = new Function('return ' + keyString)();
+      }
+
+      // Fix newline issues inside the private key
+      if (serviceAccount && serviceAccount.private_key) {
         serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
       }
+
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
       });
