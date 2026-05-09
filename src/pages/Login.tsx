@@ -40,8 +40,12 @@ export default function Login() {
     setSuccessMsg('');
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const user = userCredential.user;
       
-      if (!userCredential.user.emailVerified) {
+      const creationTime = user.metadata.creationTime ? new Date(user.metadata.creationTime).getTime() : 0;
+      const isLegacyUser = creationTime > 0 && creationTime < new Date('2026-05-09T03:00:00Z').getTime();
+
+      if (!user.emailVerified && !isLegacyUser) {
         await signOut(auth);
         setError('Por favor, confirme seu e-mail antes de fazer login. Verifique sua caixa de entrada ou aba de spam.');
         setLoading(false);

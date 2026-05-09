@@ -60,7 +60,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   if (!user) return <Navigate to="/login" replace />;
 
   // Require email verification, unless it's Master Admin
-  if (!user.emailVerified && !isAdmin) {
+  const creationTime = user.metadata?.creationTime ? new Date(user.metadata.creationTime).getTime() : 0;
+  const isLegacyUser = creationTime > 0 && creationTime < new Date('2026-05-09T03:00:00Z').getTime();
+
+  if (!user.emailVerified && !isAdmin && !isLegacyUser) {
     const handleResend = async () => {
       try {
         const mailRes = await fetch('/api/send-welcome-email', {
