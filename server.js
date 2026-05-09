@@ -25,10 +25,19 @@ try {
   }
 
   if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
+    try {
+      let keyString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+      const serviceAccount = JSON.parse(keyString);
+      // Sometimes hostinger or other platforms strip actual newlines or double-escape them.
+      if (serviceAccount.private_key) {
+        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+      }
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+    } catch (parseError) {
+      throw new Error(`Erro ao interpretar FIREBASE_SERVICE_ACCOUNT_KEY (deve ser um JSON válido). Erro: ${parseError.message}`);
+    }
   } else if (fbConfig) {
     admin.initializeApp({ projectId: fbConfig.projectId });
   } else if (process.env.VITE_FIREBASE_PROJECT_ID) {
@@ -140,11 +149,19 @@ app.post('/api/create-password-reset-email', async (req, res) => {
     }
 
     if (!admin.apps.length) {
-      return res.status(500).json({ success: false, error: 'Administrador do Firebase (Admin SDK) não configurado no servidor. Por favor, adicione a variável FIREBASE_SERVICE_ACCOUNT_KEY no Hostinger.' });
+      return res.status(500).json({ success: false, error: `SDK Admin não configurado: ${adminError || 'Variável FIREBASE_SERVICE_ACCOUNT_KEY ausente ou inválida'}.` });
     }
 
-    // Attempt to generate the link
-    const link = await admin.auth().generatePasswordResetLink(email);
+    let link;
+    try {
+      link = await admin.auth().generatePasswordResetLink(email);
+    } catch (authError) {
+      console.error("Admin Auth Error:", authError);
+      return res.status(500).json({ 
+        success: false, 
+        error: `Erro ao gerar link de recuperação no Firebase. Verifique se a variável FIREBASE_SERVICE_ACCOUNT_KEY contém um JSON de 'Conta de Serviço' válido com as permissões corretas. (Erro: ${authError.message})`
+      });
+    }
 
     // Send email via nodemailer
     await transporter.sendMail({
