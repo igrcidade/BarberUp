@@ -27,7 +27,28 @@ try {
   if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
     try {
       let keyString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-      const serviceAccount = JSON.parse(keyString);
+      
+      // Limpeza de escapes acidentais que a Hostinger ou outros painéis podem colocar
+      keyString = keyString.trim();
+      if (keyString.startsWith('\\{')) {
+        keyString = keyString.substring(1);
+      }
+      if (keyString.startsWith("'{") && keyString.endsWith("}'")) {
+         keyString = keyString.slice(1, -1);
+      }
+      if (keyString.startsWith('"{') && keyString.endsWith('}"')) {
+         keyString = JSON.parse(keyString); // Pode ser um JSON em texto escapado duplamente
+      }
+      
+      if (typeof keyString === 'string') {
+        const firstBrace = keyString.indexOf('{');
+        const lastBrace = keyString.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1) {
+          keyString = keyString.substring(firstBrace, lastBrace + 1);
+        }
+      }
+
+      const serviceAccount = typeof keyString === 'string' ? JSON.parse(keyString) : keyString;
       // Sometimes hostinger or other platforms strip actual newlines or double-escape them.
       if (serviceAccount.private_key) {
         serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
