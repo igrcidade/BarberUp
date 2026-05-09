@@ -84,6 +84,7 @@ export default function Register() {
         await addDoc(collection(db, 'mail'), {
           to: email.trim(),
           message: {
+            from: 'BarberUp <contato@usebarberup.com>',
             subject: 'Bem-vindo ao BarberUp! Seu acesso de Elite está liberado ✂️',
             html: `
               <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; color: #333;">
