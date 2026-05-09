@@ -113,7 +113,49 @@ app.post('/api/create-checkout', async (req, res) => {
   }
 });
 
-// Admin Reset Password endpoint
+// Request Password Reset via Email Extension
+app.post('/api/create-password-reset-email', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'Email is required' });
+    }
+
+    // Attempt to generate the link
+    const link = await admin.auth().generatePasswordResetLink(email);
+
+    // Save to 'mail' collection to trigger the extension
+    await db.collection('mail').add({
+      to: email,
+      message: {
+        from: 'BarberUp <contato@usebarberup.com>',
+        subject: 'Redefinição de Senha - BarberUp',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; color: #333;">
+            <h2 style="color: #f97316;">Recuperação de Acesso</h2>
+            <p>Recebemos uma solicitação para redefinir a senha da sua conta BarberUp.</p>
+            <p>Para criar uma nova senha, clique no botão abaixo:</p>
+            <p style="margin: 30px 0;">
+              <a href="${link}" style="display: inline-block; background-color: #f97316; color: #fff; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px;">Redefinir Senha</a>
+            </p>
+            <p>Se você não solicitou esta alteração, pode ignorar este e-mail.</p>
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 24px 0;" />
+            <p style="font-size: 12px; color: #999;">BarberUp Premium Engine</p>
+          </div>
+        `
+      }
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    if (error.code === 'auth/user-not-found') {
+      // Return success to avoid telling user enumeration, or just pass it back
+      return res.json({ success: true });
+    }
+    console.error('Error creating password reset email:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 app.post('/api/admin/reset-password', async (req, res) => {
   try {
     const { email, newPassword, adminEmail } = req.body;

@@ -54,18 +54,23 @@ export default function Login() {
     setResetError('');
     
     try {
-      // Firebase password reset
-      auth.languageCode = 'pt-BR';
-      await sendPasswordResetEmail(auth, resetEmail.trim());
-      setResetSuccess(true);
-    } catch (err: any) {
-      if (err.code === 'auth/user-not-found') {
-        setResetError('E-mail não encontrado em nossa base de dados.');
-      } else if (err.code === 'auth/invalid-email') {
-        setResetError('Formato de e-mail inválido.');
+      const response = await fetch('/api/create-password-reset-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: resetEmail.trim() })
+      });
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        setResetError('Erro ao tentar recuperar a senha: ' + (data.error || 'Tente novamente.'));
       } else {
-        setResetError('Erro ao tentar recuperar a senha: ' + (err.message || 'Tente novamente.'));
+        setResetSuccess(true);
       }
+    } catch (err: any) {
+      setResetError('Erro ao conectar com o servidor. Tente novamente mais tarde.');
     } finally {
       setIsResetting(false);
     }
