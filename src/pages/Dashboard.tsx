@@ -24,7 +24,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter }
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useTheme } from '../components/ThemeProvider';
 import { subscribeToCollection, addDocument } from '../lib/db';
-import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, differenceInDays, addDays, subDays, startOfYear, endOfYear, subMonths, startOfDay, endOfDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, differenceInDays, addDays, subDays, startOfYear, endOfYear, subMonths, startOfDay, endOfDay, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
   XAxis, 
@@ -99,11 +99,48 @@ export default function Dashboard() {
     return isWithinInterval(date, { start: monthStart, end: monthEnd });
   });
 
-  const currentPeriodExpenses = expenses.filter(e => {
-    const eDate = e.date;
-    if (!eDate) return false;
-    const date = parseISO(eDate);
-    return isWithinInterval(date, { start: monthStart, end: monthEnd });
+  const currentPeriodExpenses = expenses.flatMap(e => {
+    if (!e.date) return [];
+    const expenseDate = parseISO(e.date);
+    
+    if (e.isRecurrent) {
+      const occurrences: any[] = [];
+      let currentMonth = startOfMonth(expenseDate);
+      const endPeriodMonth = startOfMonth(monthEnd);
+      
+      while (currentMonth <= endPeriodMonth) {
+        const currentMonthStr = format(currentMonth, 'yyyy-MM');
+        
+        // Check if it should be shown in this month (hidden or ended)
+        const isHidden = e.hiddenMonths?.includes(currentMonthStr);
+        const isEnded = e.recurrenceEndMonth && currentMonthStr > e.recurrenceEndMonth;
+        
+        if (!isHidden && !isEnded) {
+          // Calculate the specific day of occurrence in this month
+          const day = expenseDate.getDate();
+          const occurrenceDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+          
+          // Fix for months with fewer days than the original date's day
+          let actualOccurrenceDay = occurrenceDay;
+          if (occurrenceDay.getMonth() !== currentMonth.getMonth()) {
+            actualOccurrenceDay = endOfMonth(currentMonth);
+          }
+          
+          // Check if this specific occurrence falls within the dashboard filter range
+          if (isWithinInterval(actualOccurrenceDay, { start: monthStart, end: monthEnd })) {
+            occurrences.push({
+              ...e,
+              id: `${e.id}-${currentMonthStr}`, // Use a virtual ID for the list
+              date: format(actualOccurrenceDay, 'yyyy-MM-dd')
+            });
+          }
+        }
+        currentMonth = addMonths(currentMonth, 1);
+      }
+      return occurrences;
+    }
+    
+    return isWithinInterval(expenseDate, { start: monthStart, end: monthEnd }) ? [e] : [];
   });
 
   const totalSales = currentPeriodSales.reduce((acc, curr) => acc + (curr.total || 0), 0);
