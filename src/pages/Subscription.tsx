@@ -35,7 +35,7 @@ export default function Subscription() {
     { 
       id: 'mensal', 
       name: 'Mensal', 
-      price: '69,90', 
+      price: '49,90', 
       period: '/mês', 
       description: 'Ideal para quem está começando agora.',
       features: ['Gestão de Agendamentos', 'Controle Financeiro', 'PDV Completo', 'Até 2 Profissionais'],
@@ -44,9 +44,9 @@ export default function Subscription() {
     { 
       id: 'anual', 
       name: 'Anual', 
-      price: '49,90', 
+      price: '29,90', 
       period: '/mês', 
-      billed: 'Valor Total: R$ 598,80',
+      billed: 'Valor Total: R$ 358,80',
       description: 'O melhor custo-benefício para sua elite.',
       features: ['Tudo do Mensal', 'Gestão de Estoque', 'Relatórios de Retenção', 'Profissionais Ilimitados', 'Suporte Prioritário'],
       popular: true
@@ -54,9 +54,9 @@ export default function Subscription() {
     { 
       id: 'semestral', 
       name: 'Semestral', 
-      price: '59,90', 
+      price: '39,90', 
       period: '/mês', 
-      billed: 'Valor Total: R$ 359,40',
+      billed: 'Valor Total: R$ 239,40',
       description: 'Equilíbrio perfeito para seu crescimento.',
       features: ['Tudo do Mensal', 'Gestão de Estoque', 'Até 5 Profissionais', 'Suporte via WhatsApp'],
       popular: false

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle2, CreditCard, Lock, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, CreditCard, Lock, ShieldCheck, ArrowLeft, Mail } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth';
@@ -17,9 +17,9 @@ export default function CheckoutPlan() {
   const [loading, setLoading] = useState(false);
 
   const planDetails = {
-    mensal: { name: 'Mensal', price: '69,90', period: 'mês', displayPrice: '69,90', totalText: '', planType: 'mensal' },
-    semestral: { name: 'Semestral', price: '359,40', period: 'mês', displayPrice: '59,90', totalText: 'Total R$ 359,40 / semestre', planType: 'semestral' },
-    anual: { name: 'Anual', price: '598,80', period: 'mês', displayPrice: '49,90', totalText: 'Total R$ 598,80 / ano', planType: 'anual' }
+    mensal: { name: 'Mensal', price: '49,90', period: 'mês', displayPrice: '49,90', totalText: '', planType: 'mensal' },
+    semestral: { name: 'Semestral', price: '239,40', period: 'mês', displayPrice: '39,90', totalText: 'Total R$ 239,40 / semestre', planType: 'semestral' },
+    anual: { name: 'Anual', price: '358,80', period: 'mês', displayPrice: '29,90', totalText: 'Total R$ 358,80 / ano', planType: 'anual' }
   };
 
   const selectedPlan = planDetails[planParam as keyof typeof planDetails] || planDetails.mensal;
@@ -81,6 +81,19 @@ export default function CheckoutPlan() {
           <h1 className="text-3xl font-bold uppercase tracking-tight">Finalizar Pagamento</h1>
           <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest text-[#009EE3]">Acesso BarberUp</p>
         </div>
+
+        {user && !user.emailVerified && (
+          <div className="bg-orange-500/10 border border-orange-500/20 text-orange-400 p-4 rounded-2xl flex flex-col gap-2 shadow-lg shadow-orange-500/5 animate-in fade-in duration-300">
+            <span className="uppercase text-[11px] font-black tracking-widest flex items-center gap-2 text-orange-400">
+              <Mail className="w-4 h-4 text-orange-400 shrink-0" /> CONFIRME SEU E-MAIL
+            </span>
+            <p className="text-xs font-medium text-zinc-300 leading-relaxed">
+              Enviamos um e-mail de confirmação para <strong>{user.email}</strong>. 
+              Sua conta estará pronta para uso assim que o pagamento for aprovado, mas lembre-se de que é 
+              <strong> obrigatório confirmar seu e-mail</strong> acessando sua caixa de entrada ou spam para liberar o acesso ao sistema.
+            </p>
+          </div>
+        )}
 
         <Card className="bg-card border-border shadow-xl">
           <CardContent className="p-8 space-y-6">

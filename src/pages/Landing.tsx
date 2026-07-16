@@ -112,7 +112,7 @@ export default function Landing() {
   const plans = [
     {
       name: 'Mensal',
-      price: '69,90',
+      price: '49,90',
       period: '/mês',
       description: 'Ideal para quem está começando agora.',
       features: ['Gestão de Clientes', 'Controle Financeiro', 'PDV Completo', 'Até 2 Profissionais'],
@@ -121,23 +121,23 @@ export default function Landing() {
     },
     {
       name: 'Anual',
-      price: '49,90',
+      price: '29,90',
       period: '/mês',
       description: 'O melhor custo-benefício para sua elite.',
       features: ['Tudo do Mensal', 'Gestão de Estoque', 'Relatórios de Retenção', 'Profissionais Ilimitados', 'Suporte Prioritário'],
       cta: 'Assinar Plano Anual',
       popular: true,
-      billed: 'Valor Total: R$ 598,80'
+      billed: 'Valor Total: R$ 358,80'
     },
     {
       name: 'Semestral',
-      price: '59,90',
+      price: '39,90',
       period: '/mês',
       description: 'Equilíbrio perfeito para seu crescimento.',
       features: ['Tudo do Mensal', 'Gestão de Estoque', 'Até 5 Profissionais', 'Suporte via WhatsApp'],
       cta: 'Assinar Plano Semestral',
       popular: false,
-      billed: 'Valor Total: R$ 359,40'
+      billed: 'Valor Total: R$ 239,40'
     }
   ];
 

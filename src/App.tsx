@@ -59,12 +59,14 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
 
-  // Require email verification, unless it's Master Admin
+  // Require email verification, unless it's Master Admin or on the checkout path
   const creationTime = user.metadata?.creationTime ? new Date(user.metadata.creationTime).getTime() : 0;
   const isLegacyUser = creationTime > 0 && creationTime < new Date('2026-05-09T02:10:00Z').getTime();
+  const isCheckoutPath = location.pathname.includes('/checkout');
 
-  if (!user.emailVerified && !isAdmin && !isLegacyUser) {
+  if (!user.emailVerified && !isAdmin && !isLegacyUser && !isCheckoutPath) {
     const handleResend = async () => {
+      let customEmailSent = false;
       try {
         const mailRes = await fetch('/api/send-welcome-email', {
           method: 'POST',
@@ -76,12 +78,30 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           })
         });
         if (mailRes.ok) {
+          customEmailSent = true;
           toast.success('E-mail reenviado com sucesso! Verifique sua caixa de entrada e spam.');
         } else {
-          toast.error('Erro ao reenviar e-mail de confirmação.');
+          console.error('Erro ao reenviar e-mail customizado.');
         }
       } catch (e) {
-        toast.error('Erro de rede ao reenviar e-mail.');
+        console.error('Erro de rede ao reenviar e-mail customizado.', e);
+      }
+
+      if (!customEmailSent) {
+        try {
+          // Fallback
+          const { sendEmailVerification } = await import('firebase/auth');
+          await sendEmailVerification(user);
+          toast.success('E-mail padrão reenviado com sucesso! Verifique sua caixa de entrada e spam.');
+        } catch (fbError: any) {
+          console.error('Erro no fallback de e-mail:', fbError);
+          // Adicionamos wait se o erro for too-many-requests
+          if (fbError.code === 'auth/too-many-requests') {
+            toast.error('Muitas tentativas. Aguarde um momento antes de tentar novamente.');
+          } else {
+            toast.error('Erro ao reenviar e-mail de confirmação.');
+          }
+        }
       }
     };
 

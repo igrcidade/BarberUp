@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { doc, setDoc, collection, addDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
@@ -80,6 +80,7 @@ export default function Register() {
       });
 
       // Envia e-mail de Boas Vindas via backend com Nodemailer
+      let customEmailSent = false;
       try {
         const mailRes = await fetch('/api/send-welcome-email', {
           method: 'POST',
@@ -93,25 +94,37 @@ export default function Register() {
           })
         });
         
-        if (!mailRes.ok) {
+        if (mailRes.ok) {
+          customEmailSent = true;
+        } else {
           const errData = await mailRes.json().catch(() => null);
-          console.error('Falha no servidor ao enviar e-mail de boas vindas:', errData);
-          toast.error('Erro ao enviar e-mail de confirmação. ' + (errData?.error || ''));
+          console.error('Falha no servidor ao enviar e-mail customizado:', errData);
         }
       } catch (mailError) {
-        console.error('Falha de rede ao solicitar envio de e-mail de boas vindas:', mailError);
-        toast.error('Gargalo na rede ao disparar o e-mail central.');
+        console.error('Falha de rede ao solicitar envio de e-mail customizado:', mailError);
       }
 
-      await auth.signOut();
-
-      toast.success('Conta criada com sucesso!', { 
-        description: 'Enviamos um e-mail de confirmação para você. Verifique sua caixa de entrada ou spam.'
-      });
+      // Fallback para envio padrão do Firebase
+      if (!customEmailSent) {
+        try {
+          await sendEmailVerification(userCredential.user);
+          console.log('E-mail de verificação padrão enviado com sucesso.');
+        } catch (fbError) {
+          console.error('Falha ao enviar e-mail de verificação padrão:', fbError);
+          toast.error('Erro ao enviar e-mail de confirmação. Tente fazer login para reenviar.');
+        }
+      }
 
       if (selectedPlan) {
-        navigate(`/login?message=confirm-email&plan=${selectedPlan}`);
+        toast.success('Conta criada com sucesso!', { 
+          description: `Enviamos um e-mail de confirmação para ${email.trim()}. Verifique sua caixa de entrada ou spam.`
+        });
+        navigate(`/checkout?plan=${selectedPlan}`);
       } else {
+        await auth.signOut();
+        toast.success('Conta criada com sucesso!', { 
+          description: 'Enviamos um e-mail de confirmação para você. Verifique sua caixa de entrada ou spam.'
+        });
         navigate('/login?message=confirm-email');
       }
     } catch (err: any) {

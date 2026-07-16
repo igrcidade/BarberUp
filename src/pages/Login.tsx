@@ -45,14 +45,15 @@ export default function Login() {
       const creationTime = user.metadata.creationTime ? new Date(user.metadata.creationTime).getTime() : 0;
       const isLegacyUser = creationTime > 0 && creationTime < new Date('2026-05-09T02:10:00Z').getTime();
 
-      if (!user.emailVerified && !isLegacyUser) {
+      const plan = searchParams.get('plan');
+
+      if (!user.emailVerified && !isLegacyUser && !plan) {
         await signOut(auth);
         setError('Por favor, confirme seu e-mail antes de fazer login. Verifique sua caixa de entrada ou aba de spam.');
         return;
       }
 
       // Check if we have a plan to redirect to checkout
-      const plan = searchParams.get('plan');
       if (plan) {
         navigate(`/checkout?plan=${plan}`);
       } else {
@@ -80,23 +81,38 @@ export default function Login() {
     setResetError('');
     
     try {
-      const response = await fetch('/api/create-password-reset-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email: resetEmail.trim() })
-      });
-      
-      const data = await response.json();
-      
-      if (!data.success) {
-        setResetError('Erro ao tentar recuperar a senha: ' + (data.error || 'Tente novamente.'));
-      } else {
+      let customEmailSent = false;
+      try {
+        const response = await fetch('/api/create-password-reset-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email: resetEmail.trim() })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+          customEmailSent = true;
+          setResetSuccess(true);
+        } else {
+          console.error('Erro ao enviar e-mail de reset customizado:', data.error);
+        }
+      } catch (err) {
+        console.error('Erro de rede ao enviar e-mail de reset customizado:', err);
+      }
+
+      if (!customEmailSent) {
+        // Fallback
+        await sendPasswordResetEmail(auth, resetEmail.trim());
         setResetSuccess(true);
       }
     } catch (err: any) {
-      setResetError('Erro ao conectar com o servidor. Tente novamente mais tarde.');
+      if (err.code === 'auth/user-not-found') {
+        setResetError('Não encontramos uma conta com este e-mail.');
+      } else {
+        setResetError('Erro ao tentar recuperar a senha. Tente novamente mais tarde.');
+      }
     } finally {
       setIsResetting(false);
     }
